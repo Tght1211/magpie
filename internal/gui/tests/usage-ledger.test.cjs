@@ -413,10 +413,14 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const asked = [];
         const { page, errors } = await open(lang, "light", asked);
         await page.route("**/api/gateway/trace?*", async route => {
-          await page.waitForTimeout(100);
+          await new Promise((resolve) => setTimeout(resolve, 100));
           await route.fulfill({json:{mine:true, seq:1, routes:[{id:123,time:ROWS[0].t,agent:"codex",model:"gpt-6-sol",provider:"relay",order:[],tries:[],done:true,status:200}],totals:{requests:1,rerouted:0,errors:0},now:new Date().toISOString()}}).catch(()=>{});
         });
-        await page.waitForTimeout(5500);
+        // Routing pauses after its first read while hidden. Open it and
+        // wait for the fixture's live trace before linking to its newest row.
+        await page.locator('#nav [data-view="routing"]').click();
+        await page.waitForFunction(() => document.querySelector('.rt-stats b')?.textContent === '1', null, { timeout: 15000 });
+        await page.locator('#nav [data-view="usage"]').click();
         const link = page.locator(".led tbody tr").first().getByTitle(lang === "en" ? "View routing" : "查看路由");
         await wheelTo(page, link);
         await link.click();
