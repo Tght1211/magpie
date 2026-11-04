@@ -57,5 +57,7 @@ remain local and are not part of the build.
   configuration/caller-key hashes were preserved; historical request totals
   continued increasing after restart.
 
-The repository-wide Go run and cross-platform checks are recorded separately
-in the local validation log; this change does not claim a full GUI-suite run.
+Native, Linux and Windows vet checks passed. The repository-wide Go test run
+was interrupted after the local disk ran out of space while linking tests
+and creating fixtures; it is not a passing run. This change does not claim
+a full GUI-suite run, a native desktop build, or a Windows executable test.
