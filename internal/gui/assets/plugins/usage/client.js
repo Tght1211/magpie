@@ -12,6 +12,7 @@
 // link opens on). The allowance cards themselves, which the tray panel
 // shows too, stay app.js's.
 magpie.plugin("usage", (ctx) => {
+  quotaPlannerPage(ctx);
   ctx.slots.add("page", {
     key: "usage",
     title: "Usage",

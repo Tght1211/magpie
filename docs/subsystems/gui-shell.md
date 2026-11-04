@@ -1022,3 +1022,35 @@ still follows the existing Not set up folding rules. The dialog explains that
 restoring visibility does not pin an unconfigured agent into the main list.
 See `agent-bulk-visibility.test.cjs` for persistence, partial selection, failed
 saves, narrow layouts and all five languages in Chromium and WebKit.
+
+## Quota planning preview
+
+The Usage plugin also contributes `quota-planner`, with three chart tabs:
+allowance deadlines, consumption scenarios, and gateway-key usage. Its
+`planner-model.js`, `planner-view.js`, `planner.js` and scoped `planner.css`
+use the shell lifecycle and translations. It reads the existing authenticated
+`/api/usage/quotas`, `/api/usage/quotas/history?days=30` and
+`/api/usage?period=30d&tz=…` APIs. No settings, routing state or reset cards are
+written. Hiding the page stops its minute timer and invalidates pending reads;
+late results cannot replace a later visit. Failed reads are shown as unknown.
+
+Each Codex account keeps its own weekly percentage, timestamp and deadline.
+The next usable deadline orders suggestions for new work; this is a preview,
+not a mathematically optimal scheduler, and it does not change session affinity.
+A natural reset before a card expiry is preserved as a separate future window.
+The 100% refill, 80% card threshold and one-hour review margin are labelled
+scenario assumptions, not execution rules. A passed reset needs a new reading.
+History uses the provider's cycle-boundary rules, including clock jitter, so
+refills are not counted as consumption. Future lines stop at zero.
+
+Key charts use the existing gateway summary's final calls (retries are not
+extra tasks), with a pool-wide daily series and per-key totals. Cache input
+share excludes tokens with unknown cache accounting, as `usage.Totals` does.
+Single-account, pool-capacity and scheduling counterfactuals remain uncomputed;
+no inferred savings or unsent demand are presented as observed benefits.
+
+`quota-planner-model.test.cjs` checks deadlines, unknown/held accounts, cycles
+and cache accounting. `quota-planner.test.cjs` exercises the real shell and
+fixtures in Chromium and WebKit, five languages, narrow layouts, live sliders,
+failed reads, navigation races and escaped data. The preview never loads the
+private prototype snapshot.

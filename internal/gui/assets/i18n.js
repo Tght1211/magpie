@@ -4,6 +4,7 @@
 // works. {name} slots are filled by t(str, vars).
 const I18N = {
   zh: {
+    "Quota planner": "额度规划",
     "Just want accounts switched? {agent} needn't be connected to magpie.": "只想自动切换账号？不需要把 {agent} 接入 magpie。",
     "No spend cap": "无消费上限",
     "{spent} of {cap} today": "今日 {spent} / {cap}",
@@ -4607,6 +4608,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "这份报告已经不在了：magpie 只保留最近 5 份。",
   },
   "zh-TW": {
+    "Quota planner": "額度規劃",
     "Just want accounts switched? {agent} needn't be connected to magpie.": "只想自動切換帳號？不需要把 {agent} 接入 magpie。",
     "No spend cap": "無消費上限",
     "{spent} of {cap} today": "今日 {spent} / {cap}",
@@ -9195,6 +9197,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "這份報告已經不在了：magpie 只保留最近 5 份。",
   },
   ja: {
+    "Quota planner": "利用枠の計画",
     "Just want accounts switched? {agent} needn't be connected to magpie.": "アカウントを自動で切り替えたいだけなら、{agent} を magpie に接続する必要はありません。",
     "No spend cap": "支出上限なし",
     "{spent} of {cap} today": "今日 {spent} / {cap}",
@@ -13785,6 +13788,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "このレポートはもう残っていません。magpie は最新の 5 件だけを保存します。",
   },
   de: {
+    "Quota planner": "Kontingentplanung",
     "Just want accounts switched? {agent} needn't be connected to magpie.": "Sollen nur die Konten automatisch gewechselt werden? Dafür muss {agent} nicht mit magpie verbunden sein.",
     "No spend cap": "Kein Ausgabenlimit",
     "{spent} of {cap} today": "Heute {spent} von {cap}",

@@ -1,0 +1,153 @@
+/* Chart-led layouts. Palette, type and controls inherit magpie's shared CSS. */
+.qp .v-panel { min-width:0; background:var(--card); border:1px solid var(--line); border-radius:11px; padding:18px 20px; margin-bottom:16px; }
+.qp .v-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:22px; margin-bottom:16px; }
+.qp .v-panel-head > span { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+.qp .v-panel-head h2 { font-size:13px; }
+.qp .v-muted,.qp .v-caption { font-size:11px; line-height:1.7; color:var(--muted); }
+.qp .v-caption { margin:12px 0 0; }
+.qp .v-action { display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:11px; padding:18px 20px; margin-bottom:14px; }
+.qp .v-action-icon { width:42px; height:42px; border-radius:10px; display:grid; place-items:center; font-size:19px; color:var(--account); border:1px solid var(--line); background:var(--card-2); flex:none; }
+.qp .v-action-main { flex:1; min-width:0; }
+.qp .v-kicker { display:block; color:var(--muted); font-size:10.5px; margin-bottom:4px; }
+.qp .v-action h2 { font-size:16px; font-weight:550; }
+.qp .v-action p { color:var(--muted); margin-top:5px; font-size:11px; font-variant-numeric:tabular-nums; }
+.qp .v-account-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.qp .v-account { min-width:0; display:flex; align-items:center; gap:12px; text-align:left; padding:14px 13px; border:1px solid var(--line); border-radius:10px; background:var(--card); }
+.qp .v-account.selected,.qp .v-spark-card.selected { box-shadow:inset 0 0 0 1px var(--fg-2); }
+.qp .v-account:hover,.qp .v-spark-card:hover { background:var(--card-2); }
+.qp .v-ring { flex:none; }
+.qp .v-ring text { font:550 16px var(--font); fill:var(--fg); }
+.qp .v-account-info { min-width:0; display:flex; flex-direction:column; gap:6px; }
+.qp .v-account-info b { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:550; }
+.qp .v-account-info small { font-size:10px; color:var(--muted); font-weight:400; }
+.qp .v-account-info > span { font-size:11px; color:var(--fg-2); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.qp .v-account-info em { font-size:10px; color:var(--muted); font-style:normal; }
+.qp .v-dot { display:inline-block; height:6px; width:6px; border-radius:50%; flex:none; margin-right:4px; vertical-align:middle; }
+.qp .v-stage-picker { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); background:var(--card-2); border:1px solid var(--line-2); border-radius:7px; padding:3px; margin-bottom:14px; gap:3px; }
+.qp .v-stage { display:grid; grid-template-columns:20px 1fr; gap:2px 6px; padding:8px 10px; text-align:left; border-radius:5px; }
+.qp .v-stage.on { background:var(--card); box-shadow:var(--seg-edge); }
+.qp .v-stage > span { grid-row:1 / 3; align-self:center; color:var(--muted); font-size:10px; }
+.qp .v-stage b { font-size:11.5px; font-weight:500; }
+.qp .v-stage small { color:var(--muted); font-size:10px; }
+.qp .v-svg { display:block; width:100%; overflow:visible; }
+.qp .v-svg text { fill:var(--muted); font:11px var(--font); font-variant-numeric:tabular-nums; }
+.qp .v-svg .v-axis-name { fill:var(--fg-2); font-weight:500; font-size:12px; }
+.qp .v-svg .v-bar-label { fill:var(--fg); font-size:11px; }
+.qp .v-grid { stroke:var(--line-2); stroke-width:1; }
+.qp .v-scroll { overflow-x:auto; min-width:0; }
+.qp .v-timeline { min-width:760px; }
+.qp .v-consumption { min-width:700px; }
+.qp .v-daily { min-width:440px; }
+.qp .v-chart-foot { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:10px; margin-top:8px; }
+.qp .v-legend { display:flex; align-items:center; gap:16px; flex-wrap:wrap; color:var(--muted); font-size:10.5px; }
+.qp .v-legend > span { display:inline-flex; align-items:center; gap:5px; }
+.qp .v-swatch { width:13px; height:6px; border-radius:2px; background:var(--fg-2); }
+.qp .v-reset-mark { height:8px; width:8px; border-radius:50%; border:1.5px solid var(--muted); }
+.qp .v-card-mark { height:7px; width:7px; background:var(--amber); transform:rotate(45deg); }
+.qp .v-line { display:inline-block; width:16px; border-top:2px solid var(--fg); }
+.qp .v-line.dash { border-top-style:dashed; }
+.qp .v-line.target { border-top:2px dotted var(--muted); }
+.qp .v-two-col { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; }
+.qp .v-budget-title { display:flex; align-items:baseline; gap:12px; margin:4px 0 20px; }
+.qp .v-budget-title b { font-size:28px; font-weight:550; }
+.qp .v-budget-title small { font-size:11px; font-weight:400; color:var(--muted); margin-left:5px; }
+.qp .v-budget-title > span { font-size:11px; color:var(--muted); }
+.qp .v-meter { height:17px; display:flex; border-radius:4px; overflow:hidden; background:var(--card-2); box-shadow:inset 0 0 0 1px var(--line-2); }
+.qp .v-meter i { display:block; height:100%; opacity:.8; }
+.qp .v-budget-axis { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin:6px 0; }
+.qp .v-budget-meta { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:11px; color:var(--fg-2); margin-top:17px; }
+.qp .v-budget-meta b { font-weight:500; }
+.qp .v-calendar { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.qp .v-calendar-day { border:1px solid var(--line-2); border-radius:7px; overflow:hidden; }
+.qp .v-calendar-day > div { display:flex; justify-content:space-between; align-items:center; background:var(--card-2); padding:8px; margin-bottom:5px; }
+.qp .v-calendar-day.urgent > div { background:var(--amber-soft); color:var(--amber); }
+.qp .v-calendar-day b { font-size:12px; font-weight:550; }
+.qp .v-calendar-day small { font-size:9px; color:var(--muted); }
+.qp .v-calendar-day > span { display:flex; align-items:center; padding:6px 7px; gap:2px; }
+.qp .v-calendar-day time { font-size:9px; font-variant-numeric:tabular-nums; margin-left:auto; color:var(--muted); }
+.qp .v-details { color:var(--muted); font-size:11px; margin-bottom:10px; }
+.qp .v-details summary { cursor:default; padding:7px 0; }
+.qp .v-details p { margin:6px 0; line-height:1.7; }
+.qp .v-view-tools { display:flex; align-items:center; gap:12px; justify-content:flex-start; flex-wrap:wrap; margin-bottom:16px; }
+.qp .v-view-tools > span { font-size:11px; color:var(--muted); }
+.qp .v-view-tools > span:last-child { margin-left:auto; }
+.qp .v-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 18px; }
+.qp .v-metrics > div { display:flex; flex-direction:column; gap:5px; padding:12px 16px; border-right:1px solid var(--line); }
+.qp .v-metrics > div:first-child { padding-left:0; }
+.qp .v-metrics > div:last-child { border-right:0; }
+.qp .v-metrics small,.qp .v-metrics span { color:var(--muted); font-size:11px; }
+.qp .v-metrics b { font-size:27px; font-weight:550; letter-spacing:-.5px; }
+.qp .v-metrics em { font-size:12px; color:var(--muted); font-style:normal; font-weight:400; letter-spacing:0; margin-left:5px; }
+.qp .v-forecast-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.qp .v-pace-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:14px 0; }
+.qp .v-pace-controls label { display:flex; align-items:center; flex-wrap:wrap; gap:9px; font-size:12px; }
+.qp .v-pace-controls input { width:200px; }
+.qp .v-pace-controls output { font-variant-numeric:tabular-nums; min-width:26px; }
+.qp .v-pace-controls label > span { font-size:11px; color:var(--muted); }
+.qp .v-forecast-result { display:flex; align-items:center; gap:12px; border:1px solid var(--line-2); background:var(--card-2); border-radius:8px; padding:12px 15px; }
+.qp .v-result-icon { display:grid; place-items:center; height:22px; width:22px; border-radius:50%; font-size:12px; flex:none; }
+.qp .v-forecast-result.good .v-result-icon { background:var(--green-soft); color:var(--green); }
+.qp .v-forecast-result.warn .v-result-icon { background:var(--amber-soft); color:var(--amber); }
+.qp .v-forecast-result > div { display:flex; flex-direction:column; gap:5px; }
+.qp .v-forecast-result b { font-size:12px; font-weight:550; }
+.qp .v-forecast-result div > span { font-size:11px; color:var(--muted); }
+.qp .v-forecast-result strong { font-size:24px; font-weight:550; margin-left:auto; flex:none; }
+.qp .v-forecast-result strong small { font-size:12px; font-weight:400; }
+.qp .v-section-title { display:flex; justify-content:space-between; gap:10px; margin:6px 0 12px; }
+.qp .v-section-title > span { color:var(--muted); font-size:11px; }
+.qp .v-spark-card { padding:14px 16px 12px; background:var(--card); border:1px solid var(--line); border-radius:9px; text-align:left; min-width:0; }
+.qp .v-spark-card > span { display:flex; align-items:center; font-size:12px; }
+.qp .v-spark-card b { margin-left:auto; font-size:15px; font-weight:500; }
+.qp .v-spark-card svg { width:100%; display:block; margin:9px 0 4px; }
+.qp .v-spark-card small { color:var(--muted); font-size:10px; }
+.qp .v-key-grid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:16px; }
+.qp .v-key-grid .v-panel { display:flex; flex-direction:column; }
+.qp .v-key-grid .v-scroll { margin:auto 0; }
+.qp .v-donut { width:190px; align-self:center; margin:-4px auto 0; }
+.qp .v-donut svg { display:block; width:100%; }
+.qp .v-donut text { fill:var(--muted); font:11px var(--font); }
+.qp .v-donut .v-donut-value { fill:var(--fg); font-size:26px; font-weight:550; }
+.qp .v-cache-rows { display:grid; gap:7px; margin:5px 0 0; }
+.qp .v-cache-rows > span { display:flex; align-items:center; font-size:11px; color:var(--muted); }
+.qp .v-cache-rows b { margin-left:auto; font-weight:500; color:var(--fg-2); }
+.qp .v-rank-bars { display:grid; gap:3px; }
+.qp .v-rank-row { display:grid; grid-template-columns:64px minmax(0,1fr) 42px 38px; gap:9px; align-items:center; height:31px; padding:3px 7px; text-align:left; border-radius:5px; }
+.qp .v-rank-row:hover,.qp .v-rank-row.selected { background:var(--pill); }
+.qp .v-rank-row > span:first-child { font-size:11px; color:var(--fg-2); }
+.qp .v-rank-track { height:10px; background:var(--card-2); border-radius:3px; overflow:hidden; }
+.qp .v-rank-track i { height:100%; display:block; background:var(--c1); opacity:.7; min-width:1px; border-radius:2px; }
+.qp .v-rank-row b,.qp .v-rank-row small { font-size:10px; text-align:right; font-weight:400; font-variant-numeric:tabular-nums; }
+.qp .v-rank-row small { color:var(--muted); }
+.qp .v-benefit-flow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:22px 0; }
+.qp .v-benefit-flow > div { display:flex; flex-direction:column; align-items:center; text-align:center; gap:7px; flex:1; }
+.qp .v-flow-icon { width:35px; height:35px; display:grid; place-items:center; border:1px dashed var(--line); border-radius:9px; font-size:15px; color:var(--muted); }
+.qp .observed .v-flow-icon { background:var(--pill); color:var(--fg); border-style:solid; }
+.qp .v-benefit-flow b { font-size:11px; font-weight:500; }
+.qp .v-benefit-flow small { font-size:9px; color:var(--muted); }
+.qp .v-flow-arrow { color:var(--faint); margin-top:-28px; }
+.qp .v-benefit-equation { display:grid; grid-template-columns:1fr auto; gap:6px; padding:12px 0; border-top:1px solid var(--line-2); }
+.qp .v-benefit-equation span { font-size:11px; }
+.qp .v-benefit-equation b { font-size:11px; color:var(--muted); font-weight:400; }
+.qp .v-benefit-equation small { grid-column:1 / -1; font-size:10px; color:var(--muted); }
+.qp .v-empty { color:var(--muted); padding:40px; text-align:center; }
+@media(max-width:1150px) { .qp .v-account { gap:8px; padding:12px 10px; } .qp .v-ring { width:48px; height:48px; } .qp .v-account-info b { flex-wrap:wrap; } .qp .v-calendar-day > span { flex-wrap:wrap; } .qp .v-calendar-day time { font-size:8px; } }
+@media(max-width:900px) { .qp .v-two-col,.qp .v-key-grid { grid-template-columns:1fr; gap:0; } .qp .v-action > .qp-badge { display:none; } .qp .v-account-grid { gap:8px; } .qp .v-account { flex-direction:column; align-items:flex-start; } .qp .v-account-info { width:100%; } .qp .v-stage { padding:7px 5px; grid-template-columns:1fr; } .qp .v-stage > span { display:none; } .qp .v-calendar-day time { font-size:10px; } .qp .v-donut { width:160px; } }
+@media(max-width:650px) { .qp .v-panel { padding:14px; } .qp .v-action { padding:14px; } .qp .v-action h2 { font-size:14px; } .qp .v-account-info > span { display:none; } .qp .v-account-info small { display:none; } .qp .v-account-info em { line-height:1.5; font-size:9px; } .qp .v-account { align-items:center; } .qp .v-account-info b { justify-content:center; } .qp .v-metrics { gap:0; } .qp .v-metrics > div { padding:7px 9px; } .qp .v-metrics b { font-size:22px; } .qp .v-metrics small,.qp .v-metrics span { font-size:9px; line-height:1.5; } .qp .v-metrics em { font-size:9px; } .qp .v-panel-head { flex-wrap:wrap; } .qp .v-stage b { font-size:10px; } .qp .v-stage small { font-size:9px; } .qp .v-section-title { flex-wrap:wrap; } .qp .v-pace-controls input { width:145px; } .qp .v-spark-card { padding:10px; } .qp .v-spark-card small { font-size:9px; } .qp .v-budget-title { flex-wrap:wrap; gap:7px; } .qp .v-calendar { gap:6px; } .qp .v-calendar-day > span { padding:6px; } }
+.qp .v-daily { min-width:560px; }
+.qp .v-daily text { font-size:17px; }
+.qp .v-daily .v-axis-name { font-size:18px; }
+
+/* The planner owns its layout; the shell and other Usage tabs keep theirs. */
+#view-quota-planner .qp { --font:var(--font-ui,system-ui); width:100%; min-width:0; max-width:1400px; margin:0 auto; }
+.qp .qp-tools { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:12px; }
+.qp #qpStatus { margin:0 0 16px; }
+.qp .qp-window-tabs { flex-wrap:wrap; margin-bottom:16px; }
+.qp .v-account-grid,.qp .v-spark-grid { grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); }
+.qp .v-calendar { grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); }
+.qp .v-rank-row { grid-template-columns:minmax(90px,1fr) minmax(60px,2fr) 60px 48px; }
+.qp .v-rank-row > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.qp .v-panel h2 { margin:0; font-weight:550; }
+.qp .v-metrics b { overflow-wrap:anywhere; }
+.qp .v-view-tools b { overflow-wrap:anywhere; }
+.qp .segs { flex-wrap:wrap; max-width:100%; }
+.qp .v-pace-controls label { flex-wrap:wrap; }
