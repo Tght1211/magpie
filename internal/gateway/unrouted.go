@@ -704,6 +704,9 @@ func (u *unroutedHold) giveUp(unknown bool) {
 		where = " its body still arriving (" + u.bodySaid() + ")"
 		msg, status = unroutedBodyMsg(held, u.bodySaid()), http.StatusRequestTimeout
 	}
+	// Flushing the error lets the client cancel and release its waits. Keep
+	// their state at the timeout decision for both the report and the log.
+	waits := u.waitsSaid()
 	if !u.w.answer(unroutedProto(u.r.URL.Path), status, msg) {
 		f.mu.Unlock()
 		return // the handler is answering
@@ -729,7 +732,7 @@ func (u *unroutedHold) giveUp(unknown bool) {
 	asked, _ := u.asked.Load().(string)
 	who := cmpOr(u.agent, cmpOr(f.agent, "?"))
 	where = cmpOr(where, " not masking it")
-	report := u.s.heldReport(u, held, status, who, asked, where)
+	report := u.s.heldReport(u, held, status, who, asked, where, waits)
 	u.cancel(errUnrouted)
 	name, err := writeHeld(report)
 	saved := ""
@@ -739,7 +742,7 @@ func (u *unroutedHold) giveUp(unknown bool) {
 		saved = "; its report is " + filepath.Join(HeldDir(), name)
 		u.s.trace.update(shown, func(r *Route) { r.Held = name })
 	}
-	log.Printf("gateway: %s %s for %s from %s held %s before routing,%s%s; stopped with %d%s%s", u.r.Method, u.r.URL.Path, cmpOr(asked, "?"), who, held, where, u.waitsSaid(), status, saved, unroutedStacks())
+	log.Printf("gateway: %s %s for %s from %s held %s before routing,%s%s; stopped with %d%s%s", u.r.Method, u.r.URL.Path, cmpOr(asked, "?"), who, held, where, waits, status, saved, unroutedStacks())
 }
 
 // unroutedMsg is the error of a request held for held before routing:

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,45 @@ import (
 	"testing"
 	"time"
 )
+
+type reportFlushWriter struct {
+	*httptest.ResponseRecorder
+	onFlush func()
+}
+
+func (w *reportFlushWriter) Flush() {
+	w.onFlush()
+	w.ResponseRecorder.Flush()
+}
+
+// Receiving the error may end the client's wait before the report is built.
+// Keep the wait's state at the decision to stop, not after flushing the error.
+func TestHeldReportKeepsWaitBeforeAnswer(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	s := &Server{}
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	k := &waitKind{kind: "image description", n: 1, since: time.Now()}
+	u := &unroutedHold{s: s, r: httptest.NewRequest("POST", "/v1/chat/completions", nil).WithContext(ctx),
+		f: &inflight{start: time.Now()}, cancel: cancel, saved: make(chan struct{}), kinds: []*waitKind{k}}
+	w := &reportFlushWriter{ResponseRecorder: httptest.NewRecorder(), onFlush: func() {
+		u.wmu.Lock()
+		k.n = 0
+		u.wmu.Unlock()
+	}}
+	u.w = newHeldWriter(w)
+	u.giveUp(false)
+	if w.Code != http.StatusGatewayTimeout || u.shown == nil || u.shown.Held == "" {
+		t.Fatal("the held request has no timeout report")
+	}
+	report, err := HeldReport(u.shown.Held)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(report, "image description") || !strings.Contains(report, "(under way)") {
+		t.Fatal("the report lost the active wait after the answer was flushed")
+	}
+}
 
 // A request held too long before routing leaves a report its user can
 // reach: the GUI app's log goes only to stderr. The report names the wait

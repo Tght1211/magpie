@@ -441,6 +441,8 @@ recorded as a prediction failure (`noPrediction`).
   the newest `heldKept` (5) kept. It has the time, version and system,
   method and path, the model and agent, how long it was held, each kind
   of known wait and its time ("(under way)" for the one it was in), the
+  waits captured before flushing the error so client cancellation cannot
+  erase that state (`TestHeldReportKeepsWaitBeforeAnswer`), the
   body room's state, the requests in flight and every goroutine's stack
   (function names and lines, no values; 128 KB at most, one dump for a
   burst within 10s). Never the body or headers. Its file name is

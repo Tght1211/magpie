@@ -118,7 +118,7 @@ func HeldReport(name string) (string, error) {
 }
 
 // heldReport is the report of u's request, held for held and stopped.
-func (s *Server) heldReport(u *unroutedHold, held time.Duration, status int, who, asked, where string) string {
+func (s *Server) heldReport(u *unroutedHold, held time.Duration, status int, who, asked, where, waits string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "magpie held a request before routing it, and stopped it with %d\n\n", status)
 	fmt.Fprintf(&b, "time: %s\n", time.Now().UTC().Format(time.RFC3339))
@@ -127,7 +127,7 @@ func (s *Server) heldReport(u *unroutedHold, held time.Duration, status int, who
 	fmt.Fprintf(&b, "model: %s\n", cmpOr(asked, "? (not read yet)"))
 	fmt.Fprintf(&b, "agent: %s\n", who)
 	fmt.Fprintf(&b, "held: %s,%s\n", held, where)
-	fmt.Fprintf(&b, "known waits:%s\n", cmpOr(strings.TrimPrefix(u.waitsSaid(), ";"), " none"))
+	fmt.Fprintf(&b, "known waits:%s\n", cmpOr(strings.TrimPrefix(waits, ";"), " none"))
 	// a slow body from a body that stopped coming: what had come, and
 	// when the last of it did
 	fmt.Fprintf(&b, "body read: %s\n", u.bodySaid())
