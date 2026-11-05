@@ -54,7 +54,11 @@ async function zoomed(engine, zoom, t) {
   return ctx;
 }
 
-const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const settled = async (page) => {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForFunction(() => !topFitFrame);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
+};
 const steps = (page) => page.evaluate((all) => all.filter((c) => document.querySelector(".top").classList.contains(c)).length, STEPS);
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
@@ -78,7 +82,9 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
           await page.setViewportSize({ width: engine === "webkit" ? Math.round(w / zoom) : w, height: 600 });
           await settled(page);
           const n = await steps(page), at = `${w}pt: ${await page.evaluate(() => document.querySelector(".top").className)}`;
-          if (w >= 1200) assert.equal(n, 0, "the header is drawn in with room to spare at " + at);
+          // With the planner tab, 1,200pt at 125% is no longer room to spare.
+          // The sidebar guarantees room independent of translated tab widths.
+          if (await page.evaluate(() => innerWidth >= 1024)) assert.equal(n, 0, "the header is drawn in with room to spare at " + at);
           assert(n >= last, "a wider window is drawn in more than a narrower one at " + at);
           last = n;
         }

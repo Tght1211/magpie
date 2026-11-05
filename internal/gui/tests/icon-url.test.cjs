@@ -13,6 +13,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
 const { chromium, webkit } = require("playwright");
+const { settled } = require("./reader.cjs");
 
 const assets = path.resolve(__dirname, "../assets");
 const relay = {
@@ -81,12 +82,15 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert.deepEqual(KEYS.filter((k) => !w[k]), [], `${lang} lacks these`);
 
         const editor = page.locator("#modal:not([hidden]) .editor");
+        await page.waitForLoadState("networkidle");
         await page.locator(".row.provider", { hasText: "My Relay" }).click();
         const pick = editor.locator(".icon-pick");
         await pick.waitFor();
         const scrolls = () => page.evaluate(() => [scrollY, ...[...document.querySelectorAll("#modal, #modal .editor, #modal .ebody")].map((e) => e.scrollTop)]);
         // the row and the address box under it in view, so no step needs Playwright to scroll
+        await settled(page);
         await pick.evaluate((p) => p.scrollIntoView({ block: "start" }));
+        await settled(page);
         const before = await scrolls();
 
         const get = pick.getByRole("button", { name: w["Get icon"] });

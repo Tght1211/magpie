@@ -1045,3 +1045,14 @@ provider editor's harvest choice remains staged until its ordinary Save.
 `quota-planner-model.test.cjs` checks deadline and history semantics;
 `quota-planner.test.cjs` exercises the shell in both browser engines and
 five languages, including masking, narrow layouts and stale navigation.
+
+### Delayed layout and intentional scrolling
+
+The Add provider sheet records each animation frame as the reader's position
+and extends its trusted click's scroll allowance until the motion ends. A
+delayed renderer or scroll event must not restore the previous frame. A reader
+who changes the scroll still cancels the motion. `add-button.test.cjs` holds
+the opening animation past its initial allowance to exercise that boundary.
+Header fitting runs in a queued animation frame after ResizeObserver delivery,
+so changing the observed brand and action sizes cannot create a WebKit observer
+loop. The header sweep tests wait for this queued fit before measuring.

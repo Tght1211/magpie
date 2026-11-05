@@ -15545,9 +15545,13 @@ $("#addProvider").onclick = (e) => {
   let set = from;
   const step = (now) => {
     if (Math.abs(view.scrollTop - set) > 2) return; // the reader took it
+    // The renderer can deliver the last frame after the initial allowance.
+    // Keep the scroll this click asked for alive until its animation ends.
+    readerScrolls(300);
     const x = Math.min(1, (now - t0) / 520);
     view.scrollTop = Math.round(from + (to - from) * ease(x));
     set = view.scrollTop;
+    readerLeaves(view); // preserve this frame even if its scroll event arrives late
     if (x < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
@@ -15612,9 +15616,13 @@ function unrollSheet(view, sheet, e) {
   let set = view.scrollTop;
   const follow = () => {
     if (!go || Math.abs(view.scrollTop - set) > 2) return; // the reader took it
+    // A delayed frame is still part of the trusted click's scroll. The
+    // guard must not put it back just because its original timer elapsed.
+    readerScrolls(300);
     const done = grow.playState === "finished";
     view.scrollTop = Math.round(from + (to - from) * (done ? 1 : Math.min(1, Math.max(0, sheet.offsetHeight - x0) / (h - x0))));
     set = view.scrollTop; // as far as there was room for
+    readerLeaves(view); // a delayed scroll event must not restore the prior frame
     if (!done) requestAnimationFrame(follow);
   };
   const end = () => { sheet.style.overflow = ""; };
@@ -23430,7 +23438,12 @@ function fitTop() {
   top.classList.add("crowded");
   if (!fits()) top.classList.add("packed");
 }
-const topFit = new ResizeObserver(fitTop);
+// fitTop changes the observed brand/actions sizes. Run after the current
+// observer delivery so WebKit need not redeliver its own resize in that loop.
+let topFitFrame = 0;
+const topFit = new ResizeObserver(() => {
+  if (!topFitFrame) topFitFrame = requestAnimationFrame(() => { topFitFrame = 0; fitTop(); });
+});
 for (const e of [".top", ".brand", ".actions"]) topFit.observe($(e));
 document.fonts?.ready.then(fitTop);
 // a font picked later (Settings' Font) can still be loading when it's applied

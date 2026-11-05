@@ -37,7 +37,11 @@ function server(lang) {
   };
 }
 
-const settled = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+const settled = async (page) => {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForFunction(() => !topFitFrame);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
+};
 const header = (page) => page.evaluate(() => {
   const top = document.querySelector(".top"), r = top.getBoundingClientRect();
   const n = document.querySelector("#nav").getBoundingClientRect(), a = document.querySelector(".actions").getBoundingClientRect();

@@ -58,8 +58,9 @@ table omitted the new APIs. After fixing the table, the complete CLI package
 passed; all other packages passed the full run. The final stale-reading guard
 and cache lifecycle tests also passed with race detection.
 
-The complete GUI suite is still running and its failures are being diagnosed.
-This record does not claim a clean full GUI suite or a deployment.
+The complete GUI run was interrupted in the O-prefixed files, after reporting
+additional regressions and a Playwright private-import compatibility failure.
+This record does not claim a complete green GUI suite or a server deployment.
 
 Browser fixture corrections wait for initial account reads before using rows,
 observe animation completion/progress instead of host-clock sleeps, ignore
@@ -77,3 +78,38 @@ its isolated Japanese narrow-panel case passes, which is not sufficient
 evidence to call the batch fixed. Exploratory changes for that batch were
 reverted. The staged Linux binary's SHA-256 and version match on the server;
 the active service remains `0.1.2877-quota-preview.1`.
+
+## Local deployment validation
+
+The native executable is running in an isolated local HOME on loopback. The
+local read-only preview replays allowance and usage snapshots; it does not
+import live login tokens or provider keys. Its snapshot plan is constructed
+from calibrated snapshot inputs and sent to the executable's pure solver;
+it is presentation validation, not a live gateway-routing trial.
+
+The deployed page passed four tabs at desktop and phone widths in Chromium
+and WebKit, for all five languages. Display fixtures supply known inputs;
+assets and optimization POSTs use the actual local executable. Adding cards,
+applying an official refill, session affinity and timeout illustrations were
+exercised. The server snapshot separately rendered three account curves,
+calibrated historical usage and key summaries.
+
+Real-page inspection caught a missing reset-card heading translation, now
+provided in all languages. A delayed Add provider animation could lose its
+authorized scroll when its initial time allowance expired; frames now record
+the reader's position and renew the allowance. The held-animation regression
+fails on the preceding source and passes on the fix. Header observer changes
+are deferred outside the observer-delivery loop. The focused animation,
+header and planner batch passed 32/32. Unresolved full-suite regressions still
+block the production replacement.
+
+The local executable GUI checks also passed against the server's read-only
+snapshot in both engines (three accounts, four tabs, two widths). The GUI Go
+package passed with isolated HOME. Navigation-timeout guards and the planner
+plus account-switching batch passed 23/23. The long full GUI suite remains
+incomplete; these focused results do not replace it.
+
+The routing-group and icon-picker fixture batch passed 78/78 after waiting
+for settled layout and using reader wheel input before position baselines.
+The agent updater fixture now waits for the wheel to arrive before recording
+its position; both engines passed its eight subtests.

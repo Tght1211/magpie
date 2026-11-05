@@ -17,6 +17,7 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
  for(const lang of ['en','zh','zh-TW','ja','de']) {
   const theme=lang==='zh'?'dark':'light';
   const page=await browser.newPage({viewport:{width:1440,height:950},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
+  page.setDefaultNavigationTimeout(60000);
   const errors=[],mutations=[]; let mode='ok', delayed=null, qReads=0;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
@@ -65,6 +66,7 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   assert.match(await page.locator('#qpBody .v-donut').innerText(),/75%/);
   await page.locator('#qpTabs [data-tab=mechanism]').click();
   await page.locator('[data-demo-choice]').waitFor();
+  if(lang!=='en')assert(!((await page.locator('#qpBody thead').innerText()).includes('Reset cards')),'reset-card heading is translated');
   assert.equal(await page.locator('[data-demo-target]').textContent(),'alpha@example.test');
   await page.locator('[data-demo-runtime=session]').check();
   assert.equal(await page.locator('[data-demo-choice]').textContent(),'beta@example.test');

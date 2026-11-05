@@ -5,6 +5,7 @@
 const I18N = {
   zh: {
     "Card expires in hours": "卡片将在几小时后到期",
+    "Reset cards": "重置卡",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex 调度示意：额度目标是建议，并发占满时交给兼容账号，超时按已配置的备用路径处理。Claude 需求单独计算。",
     "No compatible account available": "暂无可用的兼容账号",
     "How quota harvest works": "狠狠榨干额度原理演示",
@@ -4686,6 +4687,7 @@ const I18N = {
   },
   "zh-TW": {
     "Card expires in hours": "卡片將在幾小時後到期",
+    "Reset cards": "重置卡",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex 調度示意：額度目標是建議，並行額滿時交給相容帳號，逾時按已設定的備用路徑處理。Claude 需求獨立計算。",
     "No compatible account available": "暫無可用的相容帳號",
     "How quota harvest works": "額度用盡原理示範",
@@ -9352,6 +9354,7 @@ const I18N = {
   },
   ja: {
     "Card expires in hours": "カード失効までの時間",
+    "Reset cards": "リセットカード",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex の配分例：枠の目標は推奨値です。混雑時は互換アカウントへ、タイムアウト時は設定済みの代替先へ移ります。Claude の需要は別に計算します。",
     "No compatible account available": "利用可能な互換アカウントなし",
     "How quota harvest works": "枠を使い切る仕組み",
@@ -14020,6 +14023,7 @@ const I18N = {
   },
   de: {
     "Card expires in hours": "Stunden bis Kartenablauf",
+    "Reset cards": "Reset-Karten",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Beispiel für Codex: Das Kontingentziel ist eine Empfehlung. Ausgelastete Konten weichen kompatiblen Konten, Zeitüberschreitungen folgen konfigurierten Alternativen. Claude-Bedarf bleibt getrennt.",
     "No compatible account available": "Kein kompatibles Konto verfügbar",
     "How quota harvest works": "Kontingentausschöpfung erklärt",

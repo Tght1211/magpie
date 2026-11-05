@@ -15,6 +15,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
 const { chromium, webkit } = require("playwright");
+const { reach, settled } = require("./reader.cjs");
 
 const assets = path.resolve(__dirname, "../assets");
 const models = [
@@ -89,7 +90,7 @@ const option = (page, text) => page.locator("#pop:not([hidden]) #list li:not(.gr
 
 async function save(page, w) {
   const b = page.locator(".rt-gedit button.primary", { hasText: w.save });
-  await b.scrollIntoViewIfNeeded();
+  await reach(page, b);
   await b.click();
   await page.waitForFunction(() => !document.querySelector(".rt-gedit"));
 }
@@ -109,8 +110,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const one = await said();
         assert(one.includes("high"), `the chip says the fixed level: ${one}`);
 
-        await chip().evaluate((x) => x.scrollIntoView({ block: "center" })); // by the test, as the reader would
-        await page.waitForTimeout(200);
+        await settled(page);
+        await reach(page, chip());
         const at = () => page.evaluate(() => [...document.querySelectorAll("*")].filter((e) => e.scrollTop && !e.closest("#pop")).map((e) => [e.id || e.className, e.scrollTop]).join(";") + "|" + Math.round(document.querySelector(".rt-gedit").getBoundingClientRect().top));
         const before = await at();
 

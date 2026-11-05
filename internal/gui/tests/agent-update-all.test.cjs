@@ -116,7 +116,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const view = page.locator("#view-agents");
       await page.mouse.move(400, 300);
       await page.mouse.wheel(0, 30);
-      await page.waitForTimeout(300);
+      await page.waitForFunction(() => document.querySelector("#view-agents").scrollTop >= 29);
       const top = await view.evaluate((v) => v.scrollTop);
       await bar.locator("button").click();
       await page.waitForTimeout(200);

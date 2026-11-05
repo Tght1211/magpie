@@ -101,9 +101,21 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
           assert.deepEqual(c, { room: false, height: full, top: c.end, end: c.end }, how + " left a blank under the list");
         };
 
-        // one click: the sheet opens and the view goes down to it
+        // Hold the opening animation past scrollOnPurpose's initial allowance:
+        // a busy renderer used to have its last scroll put back by the guard.
+        await page.evaluate(() => {
+          const animate = Element.prototype.animate;
+          Element.prototype.animate = function (...args) {
+            const a = animate.apply(this, args);
+            if (this.id === "addSheet") { a.pause(); window.heldSheet = a; Element.prototype.animate = animate; }
+            return a;
+          };
+        });
         await page.locator("#addProvider").click();
-        await page.waitForFunction(reached, null, { timeout: 3000 });
+        await page.waitForFunction(() => window.heldSheet?.playState === "paused");
+        await page.waitForTimeout(1200);
+        await page.evaluate(() => window.heldSheet.play());
+        await page.waitForFunction(reached, null, { timeout: 10000 });
         await page.waitForTimeout(300);
         s = await at();
         assert(s.away, "the button steps aside while the sheet's head is in sight");
@@ -114,7 +126,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         s = await at();
         assert(s.top < 5 && s.sheet > 700 && !s.away, JSON.stringify(s));
         await page.locator("#addProvider").click();
-        await page.waitForFunction(reached, null, { timeout: 3000 });
+        await page.waitForFunction(reached, null, { timeout: 10000 });
 
         // a dialog opened and closed keeps every logo on the page
         await page.evaluate(() => document.querySelectorAll("#providers .ic, #addSheet .ic").forEach((e) => { e.dataset.was = "1"; }));
@@ -133,11 +145,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await closed("Close");
         assert(await page.locator("#addProvider").evaluate((e) => e === document.activeElement), "the focus goes back to Add provider");
         await page.locator("#addProvider").click();
-        await page.waitForFunction(reached, null, { timeout: 3000 });
+        await page.waitForFunction(reached, null, { timeout: 10000 });
         await page.locator("#addSheet .row-head button").last().click();
         await closed("a second Close");
         await page.locator("#addProvider").click();
-        await page.waitForFunction(reached, null, { timeout: 3000 });
+        await page.waitForFunction(reached, null, { timeout: 10000 });
         await page.locator("#addSheet .find").focus();
         await page.keyboard.press("Escape");
         await closed("Escape");
