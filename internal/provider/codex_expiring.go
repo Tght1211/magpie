@@ -125,7 +125,7 @@ func (e *expiringResets) check(user string, now time.Time, look func() ([]QuotaW
 	}
 	q := SubscriptionQuota{Windows: windows}
 	at := expiringResetSpent(until, now, usedUp(q, now), BackAt(q, now))
-	if at.After(now) || !windowsUsed(windows) {
+	if at.After(now) || !windowsUsed(windows) || harvestOn() && !harvestCardAllowed(user, windows, until, now) {
 		// not yet, or nothing to start again yet: the account may be used,
 		// or held up, before it runs out
 		e.next[key] = nextResetLook(until, now)
@@ -167,6 +167,9 @@ func expiringResetSpent(until, now time.Time, stopped bool, back time.Time) time
 		return time.Time{}
 	}
 	at := until.Add(-resetLead())
+	if harvestOn() {
+		return maxTime(now, at)
+	}
 	if !at.After(now) || stopped && (back.IsZero() || !back.Before(at)) {
 		return now
 	}
@@ -182,7 +185,7 @@ func expiringResetSpent(until, now time.Time, stopped bool, back time.Time) time
 // with nothing to start again. Only holding a reset, auto-use off, is
 // nothing: nobody spends it.
 func resetRunsOut(agent, user string, windows []QuotaWindow, resets *ResetCredits) time.Time {
-	if resets == nil || resets.Count <= 0 || resets.Until == nil || !windowsUsed(windows) || !autoResetsExpiring(agent, user) {
+	if resets == nil || resets.Count <= 0 || resets.Until == nil || (!windowsUsed(windows) && !harvestOn()) || !autoResetsExpiring(agent, user) {
 		return time.Time{}
 	}
 	return *resets.Until
@@ -252,13 +255,17 @@ func SpendExpiringCodexResets(ctx context.Context) {
 // check would still spend one now; a var so tests can stand in for it.
 var stillExpiring = func(ctx context.Context, who string) bool {
 	_, windows, resets, err := codexUserWindows(ctx, who)
-	return err == nil && spendExpiringNow(windows, resets, time.Now())
+	now := time.Now()
+	return err == nil && spendExpiringNow(windows, resets, now) && (!harvestOn() || harvestCardAllowed(who, windows, *resets.Until, now))
 }
 
 // spendExpiringNow: the soonest of resets is due to be spent by now
 // (expiringResetSpent) and windows have been used.
 func spendExpiringNow(windows []QuotaWindow, resets *ResetCredits, now time.Time) bool {
 	if resets == nil || resets.Count <= 0 || resets.Until == nil || !windowsUsed(windows) {
+		return false
+	}
+	if harvestOn() && !harvestCardReady(windows, *resets.Until, now) {
 		return false
 	}
 	q := SubscriptionQuota{Windows: windows}

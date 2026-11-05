@@ -2172,7 +2172,7 @@ func routingOf(routing string) string {
 // before expiry, which spend what a reset would lose.
 func keepsWeek(routing string) bool {
 	r := routingOf(routing)
-	return r == "" || r == provider.Pace
+	return r == "" || r == provider.Pace || r == provider.Harvest
 }
 
 // goesRound: routed so, a pool goes round by itself (in turn, by weight),
@@ -2218,6 +2218,9 @@ func weighRouted(p provider.Provider, cs []candidate, model string, from provide
 			rs := a.Restarts(now)
 			l := left{used: u, renews: r, fullest: a.Fullest(c.model, now), soon: a.Renewal(c.model, now), lapse: a.Lapse(c.model, now), pace: pc, due: due, amount: amt, of: of, unit: unit,
 				restarts: rs, dueRestart: !rs.IsZero() && due.Equal(rs), credits: spendsCredits(c.p, a)} // one not known counts as unused
+			if p.Routing == provider.Harvest {
+				l.soon = []time.Time{a.HarvestDeadline(c.model, now)}
+			}
 			l.dueExpiry = !l.dueRestart && !l.lapse.IsZero() && due.Equal(l.lapse)
 			l.weekLow = u >= lowShare && u < usedShare && a.CapUsed(c.model, now) < lowShare
 			l.first = l.credits && provider.CodexCreditsFirst(c.p.Account.User)
@@ -2239,6 +2242,10 @@ func weighRouted(p provider.Provider, cs []candidate, model string, from provide
 		return cs, wg
 	}
 	seats := make([]routes.Seat, len(cs))
+	var harvestRanks map[string]provider.HarvestBudget
+	if p.Routing == provider.Harvest && provider.HarvestRanks != nil {
+		harvestRanks = provider.HarvestRanks(now)
+	}
 	routed.Lock()
 	for i, c := range cs {
 		l, known := wg.lefts[c.allowanceKey()]
@@ -2249,6 +2256,12 @@ func weighRouted(p provider.Provider, cs []candidate, model string, from provide
 		seats[i] = routes.Seat{Key: c.rest, Account: c.p.Account != nil, Known: known, Learns: learns(c, wg.lefts),
 			Used: l.used, WeekLow: l.weekLow, Soon: l.soon, Lapse: l.lapse, Pace: pace, Weight: keyWeight(c), Resting: resting(c), Tokens: routed.used[c.restKey()].now(now), Credits: l.credits, First: l.first,
 			Left: l.bal, LeftIn: l.balIn, Spent: spentRest(c)}
+		if c.p.Account != nil {
+			id, _ := json.Marshal([]string{c.p.Account.UsageAgent(), strings.ToLower(c.p.Account.User)})
+			budget, ok := harvestRanks[string(id)]
+			seats[i].PlanRank, seats[i].PlanTarget, seats[i].Planned = budget.Rank, budget.Tokens, ok
+		}
+
 	}
 	routed.Unlock()
 	if st.ByUse {

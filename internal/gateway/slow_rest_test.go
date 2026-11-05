@@ -67,74 +67,78 @@ func (k *keyedSlow) reset() {
 // The same model on another key and another model on the same key are
 // asked as before.
 func TestSlowStartsRestTheModelOnItsAccount(t *testing.T) {
-	fresh(t)
-	up := &keyedSlow{key: "k1", model: "m"}
-	up.slow.Store(true)
-	serveOn(t, "a", "k1", []string{"m", "n"}, up, "k2")
-	if err := provider.SaveGroup(provider.Group{Name: "G", Members: []string{"a/m"}, Routing: provider.Ordered, FirstToken: 1}); err != nil {
-		t.Fatal(err)
-	}
-	s := New()
-	k1m, k1, k2m := "a#"+provider.KeyID("k1")+"/m", "a#"+provider.KeyID("k1"), "a#"+provider.KeyID("k2")+"/m"
-	ask := func(model string) Try {
-		t.Helper()
-		up.reset()
-		code, body := postAs(t, s, "", `{"model":"`+model+`","stream":true,"messages":[{"role":"user","content":"hi"}]}`)
-		if code != 200 || !strings.Contains(body, "from b") {
-			t.Fatalf("%s: %d %s", model, code, body)
-		}
-		r := s.trace.routes[len(s.trace.routes)-1]
-		return r.Tries[0]
-	}
+	for _, routing := range []string{provider.Ordered, provider.Harvest} {
+		t.Run(routing, func(t *testing.T) {
+			fresh(t)
+			up := &keyedSlow{key: "k1", model: "m"}
+			up.slow.Store(true)
+			serveOn(t, "a", "k1", []string{"m", "n"}, up, "k2")
+			if err := provider.SaveGroup(provider.Group{Name: "G", Members: []string{"a/m"}, Routing: routing, FirstToken: 1}); err != nil {
+				t.Fatal(err)
+			}
+			s := New()
+			k1m, k1, k2m := "a#"+provider.KeyID("k1")+"/m", "a#"+provider.KeyID("k1"), "a#"+provider.KeyID("k2")+"/m"
+			ask := func(model string) Try {
+				t.Helper()
+				up.reset()
+				code, body := postAs(t, s, "", `{"model":"`+model+`","stream":true,"messages":[{"role":"user","content":"hi"}]}`)
+				if code != 200 || !strings.Contains(body, "from b") {
+					t.Fatalf("%s: %d %s", model, code, body)
+				}
+				r := s.trace.routes[len(s.trace.routes)-1]
+				return r.Tries[0]
+			}
 
-	if tr := ask("group/g"); up.first() != "k1/m" || tr.Fail != failSlow || tr.Rest != nil {
-		t.Fatalf("once: first %s, %+v", up.first(), tr)
-	}
-	up.slow.Store(false)
-	if tr := ask("group/g"); up.first() != "k1/m" || tr.Status != 200 {
-		t.Fatalf("answered: first %s, %+v", up.first(), tr)
-	}
-	up.slow.Store(true)
-	if tr := ask("group/g"); tr.Fail != failSlow || tr.Rest != nil {
-		t.Fatalf("an answer in between starts the count again: %+v", tr)
-	}
-	tr := ask("group/g")
-	if tr.Fail != failSlow || tr.Rest == nil || tr.Rest.Why != failSlow || tr.Rest.Model != "m" || tr.Rest.Key != k1m || tr.Rest.Failures != 2 {
-		t.Fatalf("twice in a row: %+v (rest %+v)", tr, tr.Rest)
-	}
-	if d := time.Until(tr.Rest.Until); d <= 0 || d > fallbackCooldown {
-		t.Fatalf("rests %s, want up to %s", d, fallbackCooldown)
-	}
-	if _, ok := restOf(k1); ok {
-		t.Fatal("the whole key rests")
-	}
-	if _, ok := restOf(k2m); ok {
-		t.Fatal("the model rests on the other key")
-	}
-	if ask("group/g"); up.first() != "k2/m" {
-		t.Fatalf("the resting model was asked first: %s", up.first())
-	}
-	if ask("a/n"); up.first() != "k1/n" {
-		t.Fatalf("another model on the key: first %s", up.first())
-	}
+			if tr := ask("group/g"); up.first() != "k1/m" || tr.Fail != failSlow || tr.Rest != nil {
+				t.Fatalf("once: first %s, %+v", up.first(), tr)
+			}
+			up.slow.Store(false)
+			if tr := ask("group/g"); up.first() != "k1/m" || tr.Status != 200 {
+				t.Fatalf("answered: first %s, %+v", up.first(), tr)
+			}
+			up.slow.Store(true)
+			if tr := ask("group/g"); tr.Fail != failSlow || tr.Rest != nil {
+				t.Fatalf("an answer in between starts the count again: %+v", tr)
+			}
+			tr := ask("group/g")
+			if tr.Fail != failSlow || tr.Rest == nil || tr.Rest.Why != failSlow || tr.Rest.Model != "m" || tr.Rest.Key != k1m || tr.Rest.Failures != 2 {
+				t.Fatalf("twice in a row: %+v (rest %+v)", tr, tr.Rest)
+			}
+			if d := time.Until(tr.Rest.Until); d <= 0 || d > fallbackCooldown {
+				t.Fatalf("rests %s, want up to %s", d, fallbackCooldown)
+			}
+			if _, ok := restOf(k1); ok {
+				t.Fatal("the whole key rests")
+			}
+			if _, ok := restOf(k2m); ok {
+				t.Fatal("the model rests on the other key")
+			}
+			if ask("group/g"); up.first() != "k2/m" {
+				t.Fatalf("the resting model was asked first: %s", up.first())
+			}
+			if ask("a/n"); up.first() != "k1/n" {
+				t.Fatalf("another model on the key: first %s", up.first())
+			}
 
-	// a third slow start (asked again once its rest is over) rests longer
-	restingUntil.Lock()
-	restingUntil.m[k1m] = time.Now().Add(-time.Second)
-	restingUntil.Unlock()
-	tr = ask("group/g")
-	if tr.Rest == nil || tr.Rest.By != "backoff" || tr.Rest.Failures != 3 || time.Until(tr.Rest.Until) <= fallbackCooldown {
-		t.Fatalf("again: %+v (rest %+v)", tr, tr.Rest)
-	}
-	// and an answer ends it
-	restingUntil.Lock()
-	restingUntil.m[k1m] = time.Now().Add(-time.Second)
-	restingUntil.Unlock()
-	up.slow.Store(false)
-	ask("group/g")
-	up.slow.Store(true)
-	if tr := ask("group/g"); tr.Rest != nil {
-		t.Fatalf("after an answer: rest %+v", tr.Rest)
+			// a third slow start (asked again once its rest is over) rests longer
+			restingUntil.Lock()
+			restingUntil.m[k1m] = time.Now().Add(-time.Second)
+			restingUntil.Unlock()
+			tr = ask("group/g")
+			if tr.Rest == nil || tr.Rest.By != "backoff" || tr.Rest.Failures != 3 || time.Until(tr.Rest.Until) <= fallbackCooldown {
+				t.Fatalf("again: %+v (rest %+v)", tr, tr.Rest)
+			}
+			// and an answer ends it
+			restingUntil.Lock()
+			restingUntil.m[k1m] = time.Now().Add(-time.Second)
+			restingUntil.Unlock()
+			up.slow.Store(false)
+			ask("group/g")
+			up.slow.Store(true)
+			if tr := ask("group/g"); tr.Rest != nil {
+				t.Fatalf("after an answer: rest %+v", tr.Rest)
+			}
+		})
 	}
 }
 

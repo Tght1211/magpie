@@ -22,7 +22,10 @@ import (
 type Seat struct {
 	// Key is who it is: the account or key's rest key, the same for the
 	// same route from request to request
-	Key string
+	Key        string
+	PlanRank   int
+	PlanTarget float64
+	Planned    bool
 	// Account is a subscription's account, not an API key
 	Account bool
 	// Known: its allowance is known. Used, Soon and Pace are read from it

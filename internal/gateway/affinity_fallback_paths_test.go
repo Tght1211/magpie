@@ -92,6 +92,8 @@ func TestFallbackGivesBackAcrossRoutings(t *testing.T) {
 		group               bool // the fallback is a routing group
 	}{
 		{"auto", "", "", false},
+		{"harvest", provider.Harvest, "", false},
+		{"harvest, session", provider.Harvest, provider.AffinitySession, false},
 		{"in turn", provider.Rotate, "", false},
 		{"in turn, session", provider.Rotate, provider.AffinitySession, false},
 		{"least used, session", provider.LeastUsed, provider.AffinitySession, false},

@@ -588,6 +588,7 @@ var Builtin = map[string]Strategy{
 	provider.Rotate:       Rotate,
 	provider.LeastUsed:    LeastUsed,
 	provider.Pace:         Pace,
+	provider.Harvest:      Harvest,
 	provider.Weighted:     Weighted,
 	provider.FreeFirst:    FreeFirst,
 	provider.Fastest:      Fastest,

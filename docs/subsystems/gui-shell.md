@@ -1054,3 +1054,9 @@ and cache accounting. `quota-planner.test.cjs` exercises the real shell and
 fixtures in Chromium and WebKit, five languages, narrow layouts, live sliders,
 failed reads, navigation races and escaped data. The preview never loads the
 private prototype snapshot.
+
+The custom Usage plugin's quota planning page and provider routing preview
+share [quota planning](quota-planning.md)'s authenticated APIs. A separate
+fictional-account explanation uses the pure simulation endpoint; changing its
+inputs never modifies accounts, routing settings or reset cards. The provider
+editor's harvest choice remains staged until its ordinary Save action.

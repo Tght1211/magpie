@@ -2345,3 +2345,24 @@ go test -tags nogui ./internal/provider -run 'TestGroup|TestCodexCreditsSwitch|T
 
 The gateway's `TestMain` gives the package a home of its own, so these tests
 never read real providers or accounts.
+
+## Quota harvest (custom build)
+
+`harvest` is an opt-in rotation strategy for subscription pools, exposed as
+“狠狠榨干” in Chinese. [The quota planner](quota-planning.md) supplies cached
+next-hour token targets per provider/account. `weigh` reads that immutable
+snapshot, never the ledger or solver. `routes.Harvest` orders ready accounts
+by their target share minus recent measured token share, quantized to five
+percentage points to keep comparisons transitive and avoid tiny reorderings.
+Plan order and refill deadline break ties. A stale or missing plan falls back
+to refill deadlines; no synthetic dollar capacity is invented.
+
+This order is advisory: compatible-model filtering, allowance tiers, rests,
+RPM, lane admission and the configured affinity still decide the final
+request. Existing sessions keep their cache according to Stays, including
+Strict; new targets do not forcibly migrate active sessions. `laneMate` and
+`waitMate` can use another compatible member when the preferred one is full.
+An unrelated fallback is not selected just because a lane is busy. Slow-start
+and failure handling retains the existing configured fallback paths and
+never replaces a model with an arbitrary model. Future throughput is an
+inventory scenario, not a guarantee of parallel capacity or generation speed.

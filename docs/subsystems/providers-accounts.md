@@ -425,3 +425,9 @@ real `~/.codex`, `~/.claude`, `~/.config/gcloud` or `~/.config/magpie` files.
 Vertex AI's tests send Vertex AI, Google's token endpoint and IAM Credentials
 to a server of their own (`VertexForTest`). Check a change
 against real accounts in a sandbox HOME, as [Code standards](../code-standards.md#acceptance-criteria) describes.
+
+The custom `harvest` routing option preserves existing account storage and
+opt-in reset settings. Its expiring-card guards and cached planning decision
+are described in [quota planning](quota-planning.md); exhausted-week emergency
+reset behavior remains unchanged. No account or usage database migration is
+introduced by this feature.

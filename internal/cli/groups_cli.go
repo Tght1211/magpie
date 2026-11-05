@@ -144,6 +144,7 @@ var routingNames = []struct {
 	{provider.Rotate, "rotate", []string{"in-turn", "round-robin"}},
 	{provider.LeastUsed, "usage", []string{"least-used"}},
 	{provider.Pace, "pace", []string{"weekly-pace"}},
+	{provider.Harvest, "harvest", []string{"quota-harvest"}},
 	{provider.Weighted, "weight", []string{"weighted", "by-weight", "weighted-round-robin", "wrr"}},
 	{provider.FreeFirst, "free", []string{"free-first", "freest", "no-cost"}},
 	{provider.Fastest, "fast", []string{"fastest", "speed", "speed-first"}},

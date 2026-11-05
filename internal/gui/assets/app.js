@@ -11912,6 +11912,7 @@ function mediaChips(cls, ids, key, p) {
 // so looking through what each says lagged).
 const ROUTINGS = [
   ["", "Smart", "The first takes requests while it has quota to spare; when it runs low, the one with the most left takes over. One out of credit sits out half an hour, one out of quota until it resets, one rate limited as long as the vendor asks, and one that fails a minute, longer each time it fails again."],
+  ["harvest", "Quota harvest", "Spend allowance before natural resets, then prepare expiring cards. Existing conversations keep their configured affinity. Automatic card use remains opt-in and waits until the expiry margin and at least 20% weekly use."],
   ["order", "In order", "Requests go to the first; the next takes over when the one before runs out of quota, hits a rate limit or fails."],
   // dzxx0496 on Discord: free accounts one after another, the first not
   // taking the requests back once it renews (routes.Drain)
@@ -11926,7 +11927,7 @@ const ROUTINGS = [
 // the routings besides Smart are the built-in plugin rotation's
 // (plugins/rotation): off, their options leave the page (data-feature),
 // and Smart is left — one in use keeps it on
-const ROTATION = new Set(["order", "drain", "rotate", "usage", "pace", "weight", "free", "fast", "cheap", "expiring"]);
+const ROTATION = new Set(["harvest", "order", "drain", "rotate", "usage", "pace", "weight", "free", "fast", "cheap", "expiring"]);
 // jsRoutings: the routings JS gateway plugins serve now ("<plugin>/<name>",
 // settings' jsRoutings, plugins/middleware's), and saved, a routing none
 // serves now, shown as it is: its pool is tried in its listed order
@@ -11947,7 +11948,7 @@ function routingSegs(items, current, onPick) {
   });
   return box;
 }
-const routingsOf = (p) => [...ROUTINGS, ...jsRoutings(p.routing || "")];
+const routingsOf = (p) => [...ROUTINGS.filter(r => r[0] !== "harvest" || ["codex","claude"].includes(p.id)), ...jsRoutings(p.routing || "")];
 // as on the Routing page's list of these (routing/client.js AFF_OPTS)
 const STAYS = [
   ["", "Auto", "A conversation stays with the account or key that answered it while what the vendor cached of it is worth keeping — within a turn always, across turns while it's fresh."],
@@ -12004,10 +12005,13 @@ function renderRouting(p) {
     return u;
   };
   const rHint = el("div", "hint"), rUnsaved = unsaved();
+  const poolPreview = el("div", "qp route-pool-preview");
+  let poolAccounts = null, poolOptimization = null;
   const drawRouting = () => {
-    const cur = routingsOf(p).find(([id]) => id === routingNow()) || ROUTINGS[0];
+    const cur = routingsOf(p).find(([id]) => id === routingNow()) || ROUTINGS.find(r => r[0] === "");
     rHint.textContent = (ROUTINGS.includes(cur) ? t(cur[2]) : cur[2]) + own(cur[0]);
     rUnsaved.hidden = routingNow() === (p.routing || "");
+    if (poolAccounts) poolPreview.innerHTML = quotaPlannerView.routingPreview(poolAccounts, routingNow(), poolOptimization);
     // in turn and by weight go round already
     kLabel.hidden = kWrap.hidden = routingNow() === "rotate" || routingNow() === "weight";
     // each key's or account's weight shows beside it while by weight
@@ -12018,6 +12022,20 @@ function renderRouting(p) {
   rRow.append(rPick, rUnsaved);
   const rWrap = el("div");
   rWrap.append(rRow, rHint);
+  if (["codex","claude"].includes(p.id) && typeof quotaPlannerModel !== "undefined") {
+    rWrap.append(poolPreview);
+    poolPreview.textContent = t("Loading…");
+    Promise.all([api("usage/quotas"), api("usage/quotas/history?days=30"), api("usage/quota-pool"),api("usage/quota-plan")]).then(async ([qs,hs,ps,plan]) => {
+      if (!poolPreview.isConnected) return;
+      const enabled = new Set(loginsInOrder(p.account, p).filter(l => !l.paused && (l.active || l.on)).map(l => l.user.toLowerCase()));
+      poolAccounts = quotaPlannerModel.enrich(quotaPlannerModel.accounts(qs.filter(q => q.provider===p.id && enabled.has(q.user?.toLowerCase())), hs), ps, state.settings || {});
+      noteAccounts(qs); drawRouting();
+      if(plan?.demandKnown) {
+        const input={...plan.input,accounts:plan.input.accounts.filter(a=>a.group===p.id),demands:{[p.id]:plan.input.demands?.[p.id]||0},demand:plan.input.demands?.[p.id]||0};
+        if(input.accounts.length){const result=await api("usage/quota-plan/demo",input);poolOptimization={input,result,demandKnown:true};if(poolPreview.isConnected)drawRouting();}
+      }
+    }).catch(() => {if (poolPreview.isConnected) poolPreview.textContent = t("Not enough matched quota and priced usage samples.");});
+  }
   const kHint = el("div", "hint"), kUnsaved = unsaved();
   const drawSink = () => {
     kHint.textContent = t(SINKS[sinkNow() ? 1 : 0][2]);
@@ -24316,3 +24334,6 @@ if (mode === "window" && params.get("import")) {
 }
 if (mode === "window" && params.get("ask") === "quit") { params.delete("ask"); history.replaceState(null, "", "?" + params); askQuit(); }
 if (mode === "window" && params.get("view") === "providers" && params.get("edit")) editing = params.get("edit");
+
+// Shared read-only planner access to the live settings.
+window.poolPlannerSettings = () => state.settings || {};

@@ -151,3 +151,17 @@
 .qp .v-view-tools b { overflow-wrap:anywhere; }
 .qp .segs { flex-wrap:wrap; max-width:100%; }
 .qp .v-pace-controls label { flex-wrap:wrap; }
+.qp .v-pool-chart { min-width:660px; }
+.qp .v-pool-table { width:100%; border-collapse:collapse; font-size:11px; font-variant-numeric:tabular-nums; }
+.qp .v-pool-table th,.qp .v-pool-table td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line-2); white-space:nowrap; }
+.qp .v-pool-table th { color:var(--muted); font-weight:500; }
+.qp .v-pool-table .selected { background:var(--card-2); }
+.qp .v-account-info b { overflow-wrap:anywhere; display:block; }
+.qp .v-account-info > span { white-space:normal; }
+.qp .v-action h2,.qp .v-spark-card header { overflow-wrap:anywhere; }
+.qp .v-legend > span { max-width:100%; overflow-wrap:anywhere; }
+.qp #qpDemand { width:100px; margin-left:8px; }
+.route-pool-preview { margin-top:12px; max-width:100%; overflow:hidden; }
+.qp [data-demo-field] { width:82px; }
+.qp .v-pool-table td > small { display:block; color:var(--muted); }
+.qp .v-formula { margin:16px 0; padding:14px; border-radius:8px; background:var(--card-2); font-family:var(--font-mono,monospace); font-size:12px; line-height:2; overflow-wrap:anywhere; }

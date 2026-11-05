@@ -258,60 +258,64 @@ func TestLaneReleasedOnFailure(t *testing.T) {
 // while a provider's fallback is never asked for want of a slot: the
 // request waits for its own.
 func TestFullMemberGivesWay(t *testing.T) {
-	fresh(t)
-	v1, up1 := slowUp(t)
-	v2, up2 := slowUp(t)
-	one := 1
-	if err := provider.Save(provider.Provider{ID: "first", Name: "First", Key: "k1", Models: []string{"m"}, Chat: up1 + "/v1", MaxConcurrency: &one, Fallback: []string{"second/m"}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := provider.Save(provider.Provider{ID: "second", Name: "Second", Key: "k2", Models: []string{"m"}, Chat: up2 + "/v1", MaxConcurrency: &one}); err != nil {
-		t.Fatal(err)
-	}
-	if err := provider.SaveGroup(provider.Group{ID: "pair", Name: "Pair", Members: []string{"first/m", "second/m"}, Routing: provider.Ordered}); err != nil {
-		t.Fatal(err)
-	}
-	g := newLaneRig(t)
-	firstLane := func() Lane { return g.s.Lanes()["first#"+provider.KeyID("k1")] }
+	for _, routing := range []string{provider.Ordered, provider.Harvest} {
+		t.Run(routing, func(t *testing.T) {
+			fresh(t)
+			v1, up1 := slowUp(t)
+			v2, up2 := slowUp(t)
+			one := 1
+			if err := provider.Save(provider.Provider{ID: "first", Name: "First", Key: "k1", Models: []string{"m"}, Chat: up1 + "/v1", MaxConcurrency: &one, Fallback: []string{"second/m"}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := provider.Save(provider.Provider{ID: "second", Name: "Second", Key: "k2", Models: []string{"m"}, Chat: up2 + "/v1", MaxConcurrency: &one}); err != nil {
+				t.Fatal(err)
+			}
+			if err := provider.SaveGroup(provider.Group{ID: "pair", Name: "Pair", Members: []string{"first/m", "second/m"}, Routing: routing}); err != nil {
+				t.Fatal(err)
+			}
+			g := newLaneRig(t)
+			firstLane := func() Lane { return g.s.Lanes()["first#"+provider.KeyID("k1")] }
 
-	g.send(context.Background(), "/v1/chat/completions", "group/pair", "a")
-	within(t, "a at first", func() bool { return len(v1.seen()) == 1 })
-	// first is full: b goes to second at once
-	g.send(context.Background(), "/v1/chat/completions", "group/pair", "b")
-	within(t, "b at second", func() bool { return slices.Contains(v2.seen(), "b") })
-	if l := firstLane(); l.Waiting != 0 {
-		t.Fatalf("first's lane = %+v, want nobody waiting", l)
-	}
-	// both full: c waits for first, the group's first member
-	g.send(context.Background(), "/v1/chat/completions", "group/pair", "c")
-	within(t, "c queued at first", func() bool { return firstLane().Waiting == 1 })
+			g.send(context.Background(), "/v1/chat/completions", "group/pair", "a")
+			within(t, "a at first", func() bool { return len(v1.seen()) == 1 })
+			// first is full: b goes to second at once
+			g.send(context.Background(), "/v1/chat/completions", "group/pair", "b")
+			within(t, "b at second", func() bool { return slices.Contains(v2.seen(), "b") })
+			if l := firstLane(); l.Waiting != 0 {
+				t.Fatalf("first's lane = %+v, want nobody waiting", l)
+			}
+			// both full: c waits for first, the group's first member
+			g.send(context.Background(), "/v1/chat/completions", "group/pair", "c")
+			within(t, "c queued at first", func() bool { return firstLane().Waiting == 1 })
 
-	// asked for first/m itself, d waits for first rather than going to its
-	// fallback
-	g.send(context.Background(), "/v1/chat/completions", "first/m", "d")
-	within(t, "d queued at first", func() bool { return firstLane().Waiting == 2 })
-	close(v2.gate("b"))
-	if r := g.reply(); r.tag != "b" || !strings.Contains(r.body, "from b") {
-		t.Fatalf("b = %+v", r)
+			// asked for first/m itself, d waits for first rather than going to its
+			// fallback
+			g.send(context.Background(), "/v1/chat/completions", "first/m", "d")
+			within(t, "d queued at first", func() bool { return firstLane().Waiting == 2 })
+			close(v2.gate("b"))
+			if r := g.reply(); r.tag != "b" || !strings.Contains(r.body, "from b") {
+				t.Fatalf("b = %+v", r)
+			}
+			// second has room again: c, waiting for first, goes there (waitMate);
+			// d, which second is only the fallback of, waits on for first
+			within(t, "c at second", func() bool { return slices.Contains(v2.seen(), "c") })
+			if l := firstLane(); l.Waiting != 1 {
+				t.Fatalf("first's lane = %+v, want d alone waiting", l)
+			}
+			if slices.Contains(v2.seen(), "d") {
+				t.Fatal("d went to first's fallback for want of a slot")
+			}
+			close(v2.gate("c"))
+			if r := g.reply(); r.tag != "c" || !strings.Contains(r.body, "[DONE]") {
+				t.Fatalf("c = %+v", r)
+			}
+			for _, tag := range []string{"a", "d"} {
+				close(v1.gate(tag))
+				if r := g.reply(); r.tag != tag || !strings.Contains(r.body, "[DONE]") {
+					t.Fatalf("%s = %+v", tag, r)
+				}
+			}
+			within(t, "every slot given back", func() bool { return len(g.s.Lanes()) == 0 })
+		})
 	}
-	// second has room again: c, waiting for first, goes there (waitMate);
-	// d, which second is only the fallback of, waits on for first
-	within(t, "c at second", func() bool { return slices.Contains(v2.seen(), "c") })
-	if l := firstLane(); l.Waiting != 1 {
-		t.Fatalf("first's lane = %+v, want d alone waiting", l)
-	}
-	if slices.Contains(v2.seen(), "d") {
-		t.Fatal("d went to first's fallback for want of a slot")
-	}
-	close(v2.gate("c"))
-	if r := g.reply(); r.tag != "c" || !strings.Contains(r.body, "[DONE]") {
-		t.Fatalf("c = %+v", r)
-	}
-	for _, tag := range []string{"a", "d"} {
-		close(v1.gate(tag))
-		if r := g.reply(); r.tag != tag || !strings.Contains(r.body, "[DONE]") {
-			t.Fatalf("%s = %+v", tag, r)
-		}
-	}
-	within(t, "every slot given back", func() bool { return len(g.s.Lanes()) == 0 })
 }

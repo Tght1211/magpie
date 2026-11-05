@@ -16,6 +16,7 @@ import (
 	"github.com/yetone/magpie/internal/agent"
 	"github.com/yetone/magpie/internal/edit"
 	"github.com/yetone/magpie/internal/provider"
+	"github.com/yetone/magpie/internal/quotaplan"
 	"github.com/yetone/magpie/internal/sessions"
 	"github.com/yetone/magpie/internal/settings"
 	"github.com/yetone/magpie/internal/usage"
@@ -98,6 +99,25 @@ func requestContent(agent, session string, from, to, at time.Time) contentJSON {
 }
 
 func usageRoutes(mux *http.ServeMux, w Windows) {
+	mux.HandleFunc("GET /api/usage/quota-plan", coldTurn(func(rw http.ResponseWriter, r *http.Request) { writeJSON(rw, usage.QuotaPlan(usage.Clock())) }))
+	// Pure sandbox simulation: never publishes its plan to routing or calls a vendor.
+	mux.HandleFunc("POST /api/usage/quota-plan/demo", func(rw http.ResponseWriter, r *http.Request) {
+		var in quotaplan.Input
+		if err := json.NewDecoder(http.MaxBytesReader(rw, r.Body, 65536)).Decode(&in); err != nil {
+			http.Error(rw, "invalid simulation", http.StatusBadRequest)
+			return
+		}
+		result, err := quotaplan.Solve(in, 400*time.Millisecond)
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
+		}
+		writeJSON(rw, result)
+	})
+
+	mux.HandleFunc("GET /api/usage/quota-pool", coldTurn(func(rw http.ResponseWriter, r *http.Request) {
+		writeJSON(rw, usage.QuotaPool(usage.Clock()))
+	}))
 	mux.HandleFunc("GET /api/usage", coldTurn(func(rw http.ResponseWriter, r *http.Request) {
 		// the days and hours of the reader's zone, which the page names
 		writeJSON(rw, usageState(periodOf(r.URL.Query().Get("period")), usageapi.ZoneOf(r)))
