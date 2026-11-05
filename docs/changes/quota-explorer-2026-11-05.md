@@ -59,3 +59,28 @@ This is a custom server update, not an official upstream release. Historical
 predictions start with recorded data; missing past predictions stay unavailable.
 The emergency candidate search and long-range projection retain the documented
 limits in [quota planning](../subsystems/quota-planning.md).
+
+
+## Production deployment — November 5, 2026
+
+Installed `0.1.2995-quota-harvest.2` from application commit `a3f321fd`.
+Linux amd64 SHA-256:
+`138428950388a9124182f7dc23f1ee27c5a4eeef12853d323c8120883fa6b6b5`.
+
+Requests remained active; the previously authorized short restart was used.
+Backup and post-start checks completed in 19.55 seconds (not a measurement of
+request downtime). The previous executable, consistent data archive, environment
+and service definition are retained under
+`/var/backups/magpie-custom/20261105T144142Z-quota-harvest.2`.
+
+Configuration hashes, account identities and the existing usage-ledger prefix
+were preserved. No OAuth data was restored from a stale backup. The new service
+and gateway are active, and quota pool, plan, history and explorer asset checks
+pass. Public HTTPS checks pass both Chromium and WebKit, four tabs at desktop and
+phone widths, with weekend bands present and no page errors or page-level overflow.
+Successful completed user traffic was observed after deployment; no extra paid
+model call or real reset-card action was issued for verification.
+
+The first scheduled archive record and its saved forecast were observed after
+the five-minute collection interval; journal permissions exclude group/other
+access. Historical comparisons now accumulate from this deployment onward.
