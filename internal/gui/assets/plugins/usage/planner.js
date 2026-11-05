@@ -3,7 +3,7 @@ function quotaPlannerPage(ctx) {
   let controller;
   ctx.slots.add('page', {
     key: 'quota-planner', title: 'Quota planner',
-    html: '<div class="qp"><div class="qp-tools"><div class="segs" id="qpTabs"></div><span class="grow"></span><button class="text" id="qpAuto" aria-pressed="true" data-t>Auto refresh</button><button class="text" id="qpReload" data-t>Refresh</button></div><p id="qpStatus" class="v-caption" role="status"></p><div id="qpBody"></div></div>',
+    html: '<div class="qp"><div id="qpHeader"></div><div class="tabs" id="qpTabs" role="tablist"></div><p id="qpStatus" class="v-caption" role="status" hidden></p><div id="qpBody" role="tabpanel"></div></div>',
     mount(main) { controller?.dispose(); controller = quotaPlannerController(main); },
     open() { return controller.load(); },
     refresh() { return controller.load(); },
@@ -16,8 +16,10 @@ function quotaPlannerPage(ctx) {
 }
 function quotaPlannerController(main) {
   const M = quotaPlannerModel, box = main.querySelector('#qpBody'), statusBox = main.querySelector('#qpStatus');
-  const state = { explorer: {scale:'week',start:Date.now()-86400000,rescue:true,data:null,busy:false}, tab: 'plan', composition:'accounts', review:{hours:24,account:'',data:null}, members:null, admission:{left:100,cards:0}, auto:true, policy: 'harvest', demand: null, optimization: null, scenarioOptimization: null, key: '', accounts: [], usage: null, errors: [], loaded: false };
-  let timelineGeneration=0, expiredPace=false, resizeFrame, drag=null;
+  const state = { explorer: {scale:'week',start:Date.now()-86400000,rescue:true,data:null,busy:false}, tab: 'plan', composition:'accounts', forecastMode:'recommended', healthLoad:100, unit:null, review:{hours:24,account:'',data:null}, members:null, admission:{left:100,cards:0}, auto:true, policy: 'harvest', demand: null, optimization: null, scenarioOptimization: null, key: '', accounts: [], usage: null, errors: [], loaded: false };
+  const headerTools=main.querySelector('#qpHeader'),headerHost=document.querySelector('body > header.top');
+  if(headerHost){headerTools.className='qp qp-header-tools';headerHost.append(headerTools);}
+  let reviewGeneration=0,timelineGeneration=0, expiredPace=false, resizeFrame, drag=null;
   let generation = 0, pending = false, timer, paceTimer, clockTimer, numberFrame, deferredDraw = false;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const shown = () => !main.hidden && !document.hidden;
@@ -30,9 +32,13 @@ function quotaPlannerController(main) {
     const previous = new Map([...box.querySelectorAll('[data-qp-number]')].filter(e => e.dataset.qpValue !== '').map(e => [e.dataset.qpNumber, Number(e.dataset.qpCurrent ?? e.dataset.qpValue)]));
     cancelAnimationFrame(numberFrame);
     const top = main.scrollTop;
-    main.querySelector('#qpTabs').innerHTML = [['plan', 'Quota planner'], ['trend', 'Consumption review'], ['keys', 'Key sharing benefit'], ['health', 'Pool health']].map(([id, label]) => `<button class="opt ${state.tab === id ? 'on' : ''}" data-tab="${id}" aria-pressed="${state.tab === id}">${quotaPlannerView.esc(t(label))}</button>`).join('');
+    state.loading=pending;
+    headerTools.hidden=false;headerTools.innerHTML=quotaDashboard.settingsBar(state);
+    main.querySelector('#qpTabs').innerHTML = [['plan', 'Quota planner'], ['trend', 'Consumption review'], ['keys', 'Key sharing benefit'], ['health', 'Pool health']].map(([id, label]) => `<button class="${state.tab === id ? 'on' : ''}" role="tab" tabindex="${state.tab===id?0:-1}" aria-controls="qpBody" data-tab="${id}" aria-selected="${state.tab === id}" aria-pressed="${state.tab === id}">${quotaPlannerView.esc(t(label))}</button>`).join('');
     statusBox.textContent = state.errors.length ? t('Some planning data could not be read. Refresh to try again.') : state.loaded ? t(state.auto?'Live usage every 15 seconds · allowance and plan every minute':'Automatic refresh paused') + (state.updated?' · '+new Date(state.updated).toLocaleTimeString(): '') : t('Loading…');
-    box.innerHTML = state.loaded ? quotaDashboard.render(state) : '';
+    box.innerHTML = state.loaded ? quotaDashboard.render(state) : '<p class="v-empty">'+quotaPlannerView.tr('Loading…')+'</p>';
+    const reload=main.querySelector('#qpReload');if(reload)reload.disabled=pending;
+    statusBox.hidden=!state.errors.length;
     main.scrollTop = top;
     if(restoreChartFocus)box.querySelector('[data-qp-explore]')?.focus({preventScroll:true});
     tick();
@@ -45,7 +51,7 @@ function quotaPlannerController(main) {
         for (const el of changes) {
           const from = previous.get(el.dataset.qpNumber), value = from + (Number(el.dataset.qpValue) - from) * eased;
           el.dataset.qpCurrent = value;
-          el.innerHTML = quotaPlannerView.liveFormat(value, el.dataset.qpKind);
+          el.innerHTML = quotaDashboard.liveFormat(value, el.dataset.qpKind);
         }
         if (part < 1) numberFrame = requestAnimationFrame(animate);
       };
@@ -54,6 +60,9 @@ function quotaPlannerController(main) {
   };
   function tick() {
     if (!shown()) return;
+    const refresh=box.querySelector('#qpRefreshStatus'),progress=box.querySelector('#qpRefreshProgress');
+    if(refresh)refresh.textContent=(state.auto?t('Usage every 15 seconds'):t('Automatic refresh paused'))+' · '+(state.updated?new Date(state.updated).toLocaleTimeString()+' · '+t('{seconds} s ago',{seconds:Math.max(0,Math.floor((Date.now()-state.updated)/1000))}):t('Loading…'));
+    if(progress)progress.style.transform='scaleX('+(state.auto&&state.updated?Math.min(1,Math.max(0,(Date.now()-state.updated)/15000)):0)+')';
     const pace=box.querySelector('[data-pace-until]');
     if(pace && Date.now()>Number(pace.dataset.paceUntil) && !expiredPace){expiredPace=true;draw(true);return;}
     for(const el of box.querySelectorAll('[data-qp-age]'))el.textContent=t('{seconds} s ago',{seconds:Math.max(0,Math.floor((Date.now()-Number(el.dataset.qpAge))/1000))});
@@ -76,19 +85,19 @@ function quotaPlannerController(main) {
     draw(true);
     if(state.auto)paceTimer = setTimeout(refreshPace,15000);
   }
-  const leave = () => { drag=null;generation++; timelineGeneration++; scenarioGeneration++; pending = false; clearTimeout(timer); clearTimeout(paceTimer); clearInterval(clockTimer); cancelAnimationFrame(numberFrame); };
+  const leave = () => { headerTools.hidden=true;drag=null;generation++; timelineGeneration++; scenarioGeneration++; pending = false; clearTimeout(timer); clearTimeout(paceTimer); clearInterval(clockTimer); cancelAnimationFrame(numberFrame); };
   async function load(asked = false) {
     if (!shown() || pending) return;
     pending = true;
     clearTimeout(timer);
     clearTimeout(paceTimer);
     const seq = ++generation;
-    main.querySelector('#qpReload').disabled = true;
+    if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=true;
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const results = await Promise.allSettled([api('usage/quotas' + (asked ? '?asked=1' : '')), api('usage/quotas/history?days=all'), api('usage?period=30d&tz=' + encodeURIComponent(zone)), api('usage/quota-pool'), api('usage/quota-plan'), api('usage/quota-members')]);
     if (seq !== generation || !shown()) return;
     pending = false;
-    main.querySelector('#qpReload').disabled = false;
+    if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=false;
     const get = (i, array) => results[i].status === 'fulfilled' && (array ? Array.isArray(results[i].value) : typeof results[i].value?.calls === 'number') ? results[i].value : null;
     const quotas = get(0, true), hist = get(1, true), usage = get(2, false);
     state.errors = [quotas === null && 'quota', hist === null && 'history', usage === null && 'usage'].filter(Boolean);
@@ -115,11 +124,12 @@ function quotaPlannerController(main) {
     if(seq===timelineGeneration){ex.busy=false;draw(true);}
   }
   async function loadReview(){
-    const seq=generation,to=Date.now();state.review.data=null;
-    try{const d=await api('usage/quota-plan?history=1&from='+Math.round(to-24*3600000)+'&to='+to);if(seq===generation&&Array.isArray(d.bins)){state.review.data=d;draw(true);}}catch{if(seq===generation){state.review.data=null;draw(true);}}
+    const seq=++reviewGeneration,gen=generation,to=Date.now(),hours=state.review.hours;state.review.data=null;
+    const from=hours===0?(state.explorer.earliest||to-30*86400000):to-(hours||24)*3600000;
+    try{const d=await api('usage/quota-plan?history=1&from='+Math.round(from)+'&to='+to);if(gen===generation&&seq===reviewGeneration&&shown()&&Array.isArray(d.bins)){state.review.data=d;draw(true);}}catch{if(gen===generation&&seq===reviewGeneration&&shown()){state.review.data=null;draw(true);}}
   }
   function moveTimeline(start,scale=state.explorer.scale) {
-    const ex=state.explorer;ex.scale=scale;state.inspectAt=null;const span=quotaExplorer.range(ex).span;
+    const ex=state.explorer;ex.scale=scale;state.inspectAt=null;state.pinned=false;const span=quotaExplorer.range(ex).span;
     ex.start=Math.max(ex.earliest||1,Math.min(start,Date.now()+9*365*86400000-span));
     ex.data=null;loadTimeline();draw();
   }
@@ -139,22 +149,28 @@ function quotaPlannerController(main) {
   function click(e) {
     const b = e.target.closest('button');
     if (!b) return;
+    if(b.dataset.qpUnit){state.unit=b.dataset.qpUnit;draw();return;}
+    if(b.hasAttribute('data-qp-theme')){const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'light':'dark';draw();return;}
+    if(b.dataset.forecastMode){state.forecastMode=b.dataset.forecastMode;state.demand=null;draw();return;}
+    if(b.hasAttribute('data-qp-scale-menu')){openProtoMenu(b,quotaExplorer.scales.map(v=>({v:v.id,name:v.key})),state.explorer.scale,v=>moveTimeline(state.explorer.start,v),'Date window');return;}
+    if(b.dataset.qpEvent){state.inspectAt=Number(b.dataset.qpEvent);state.pinned=true;draw();return;}
+    if(b.hasAttribute('data-key-now')){state.keyTime=null;draw();return;}
+    if(b.hasAttribute('data-admission-price')){openProtoMenu(b,[20,100,200].map(v=>({v:String(v),name:'$'+v+' '+t('per month'),literalName:true})),String(state.admission.price||20),v=>{state.admission.price=Number(v);draw();},'Plan monthly price label · USD');return;}
     if(b.dataset.qpScale){moveTimeline(state.explorer.start,b.dataset.qpScale);return;}
     if(b.dataset.qpMove){const r=quotaExplorer.range(state.explorer);moveTimeline(b.dataset.qpMove==='now'?Date.now()-r.span/7:r.from+Number(b.dataset.qpMove)*r.span*.75);return;}
     if(b.dataset.qpRescue){state.explorer.rescue=!state.explorer.rescue;draw();return;}
-    if(b.id==='qpAuto'){state.auto=!state.auto;clearTimeout(timer);clearTimeout(paceTimer);if(state.auto)load();b.setAttribute('aria-pressed',state.auto);draw();return;}
     if(b.dataset.qpComposition){state.composition=b.dataset.qpComposition;draw();return;}
     if(b.dataset.member!==undefined){state.key=state.members?.members[Number(b.dataset.member)]?.id||'';state.keyModel='';draw();return;}
     if(b.dataset.keyDays){state.keyDays=Number(b.dataset.keyDays);draw();return;}
     if(b.dataset.keyModel!==undefined){state.keyModel=b.dataset.keyModel;draw();return;}
     if(b.dataset.reviewAccount!==undefined){state.review.account=b.dataset.reviewAccount===''?'':state.accounts[Number(b.dataset.reviewAccount)]?.id;draw();return;}
-    if(b.dataset.reviewHours){state.review.hours=Number(b.dataset.reviewHours);draw();return;}
+    if(b.dataset.reviewHours!==undefined){state.review.hours=Number(b.dataset.reviewHours);loadReview();draw();return;}
     if(b.dataset.bindMember){
       const member=state.members.members.find(m=>m.id===b.dataset.bindMember);
       const options=[{v:'',name:t('Unbound'),literalName:true},...state.members.accounts.map(a=>({v:a.ref,name:a.user,literalName:true}))];
       openProtoMenu(b,options,member.ref,async ref=>{try{await api('usage/quota-members',{key:member.id,account:ref});leave();await load();}catch{statusBox.textContent=t('Binding could not be saved. The account may already belong to another member.');}},'Contributed account');return;
     }
-    if(b.hasAttribute('data-admission-model')){const models=[...new Set(quotaMembers.workload(state.members,Date.now())?.map(d=>d.model)||[])];openProtoMenu(b,models.map(m=>({v:m,name:m,literalName:true})),state.admission.model||models[0],v=>{state.admission.model=v;draw();},'Model');return;}
+    if(b.hasAttribute('data-admission-model')){const models=[...new Set(quotaMembers.workload(state.members,Date.now())?.map(d=>d.model)||[])];openProtoMenu(b,models.map(m=>({v:m,name:m,literalName:true})),state.admission.model||models[0],v=>{state.admission.model=v;state.admission.support=[v];draw();},'Model');return;}
     if (b.id === 'qpReload') { leave(); load(true); return; }
     if (b.dataset.policy !== undefined) state.policy = b.dataset.policy;
     if (b.dataset.tab) {state.tab=b.dataset.tab;if(state.tab==='trend')loadReview();}
@@ -163,32 +179,44 @@ function quotaPlannerController(main) {
   function input(e) {
     if(e.target.id==='qpNavigator'){state.explorer.start=Number(e.target.value);state.inspectAt=null;state.explorer.data=null;quotaDashboard.updateChart(box,state);return;}
     if(e.target.id==='qpKeyTime'){state.keyTime=Number(e.target.value);box.querySelector('#qpKeyReadout').innerHTML=quotaDashboard.keyReadout(state);return;}
-    if(e.target.id==='qpInspect'){state.inspectAt=Number(e.target.value);return;}
+    if(e.target.id==='qpHealthLoad'){e.target.nextElementSibling.textContent=e.target.value+'%';return;}
     if (e.target.id === 'qpDemand') return;
 
   }
   function change(e) {
+    if(e.target.id==='qpAuto'){state.auto=e.target.checked;clearTimeout(timer);clearTimeout(paceTimer);if(state.auto)load();draw();return;}
+    if(e.target.id==='qpCards'){state.explorer.rescue=e.target.checked;draw();return;}
+    if(e.target.id==='qpHealthLoad'){state.healthLoad=Number(e.target.value);draw();return;}
+    if(e.target.dataset.admissionSupport){state.admission.support=[...box.querySelectorAll('[data-admission-support]:checked')].map(e=>e.dataset.admissionSupport);draw();return;}
     if(e.target.id==='qpNavigator'){loadTimeline();draw();return;}
     if(e.target.id==='qpDate'){const date=new Date(e.target.value+'T00:00:00');if(Number.isFinite(+date))moveTimeline(+date);return;}
     if(e.target.id==='qpDemand') { state.demand=e.target.value===''?null:Math.max(0,Number(e.target.value));solveScenario();draw(); }
-    if(e.target.id==='qpInspect'){draw();return;}
     if(e.target.dataset.admission){const value=Number(e.target.value);state.admission[e.target.dataset.admission]=e.target.value===''?null:Math.max(0,Math.min(1000000,value));draw();}
   }
   function visible() { if (shown()) load(); else leave(); }
   function resized(){cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>draw(true));}
   window.addEventListener('resize',resized);
   function pointerDown(e){const chart=e.target.closest('[data-qp-explore]');if(!chart||e.button!==0)return;drag={x:e.clientX,y:e.clientY,start:state.explorer.start,width:chart.clientWidth,chart};chart.setPointerCapture(e.pointerId);}
-  function pointerUp(e){if(!drag)return;const d=drag;drag=null;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dx)>20&&Math.abs(dx)>Math.abs(dy))moveTimeline(d.start-dx/d.width*quotaExplorer.range(state.explorer).span);else if(deferredDraw)draw(true);}
+  function pointerMove(e){if(drag||state.pinned||state.tab!=='plan'||!e.target.closest('[data-qp-explore]'))return;const at=quotaDashboard.timeAt(state,e);if(at!==null)quotaDashboard.inspect(box,state,at,true);}
+  function pointerOut(e){if(state.pinned||drag||!e.target.closest('[data-qp-explore]')||e.relatedTarget?.closest?.('[data-qp-explore]'))return;quotaDashboard.inspect(box,state,state.optimization?.input?.now||Date.now(),false);state.inspectAt=null;box.querySelector('#qpScrub')?.setAttribute('opacity','0');}
+  function pointerUp(e){if(!drag)return;const d=drag;drag=null;const dx=e.clientX-d.x,dy=e.clientY-d.y;if(Math.abs(dx)>20&&Math.abs(dx)>Math.abs(dy))moveTimeline(d.start-dx/d.width*quotaExplorer.range(state.explorer).span);else {state.pinned=!state.pinned;const at=quotaDashboard.timeAt(state,e);if(at!==null)quotaDashboard.inspect(box,state,at,true);if(deferredDraw)draw(true);}}
   function pointerCancel(){drag=null;if(deferredDraw)draw(true);}
-  function keydown(e){if(!e.target.matches('[data-qp-explore]'))return;if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();moveTimeline(state.explorer.start+(e.key==='ArrowRight'?1:-1)*quotaExplorer.range(state.explorer).span*.25);}}
+  function keydown(e){
+    if(e.target.matches('#qpTabs [data-tab]')&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){
+      e.preventDefault();const ids=['plan','trend','keys','health'],i=ids.indexOf(state.tab),j=e.key==='Home'?0:e.key==='End'?3:(i+(e.key==='ArrowRight'?1:-1)+4)%4;
+      state.tab=ids[j];if(state.tab==='trend')loadReview();draw();main.querySelector('#qpTabs [data-tab='+state.tab+']').focus();return;
+    }
+    if(!e.target.matches('[data-qp-explore]'))return;if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const r=quotaExplorer.range(state.explorer),at=(state.inspectAt??Date.now())+(e.key==='ArrowRight'?1:-1)*r.span/28;state.pinned=true;quotaDashboard.inspect(box,state,at,true);}}
+  main.addEventListener('pointermove',pointerMove);main.addEventListener('pointerout',pointerOut);
   main.addEventListener('pointercancel',pointerCancel);main.addEventListener('pointerdown',pointerDown);main.addEventListener('pointerup',pointerUp);main.addEventListener('keydown',keydown);
   const obs = new MutationObserver(visible);
   obs.observe(main, { attributes: true, attributeFilter: ['hidden'] });
   document.addEventListener('visibilitychange', visible);
   function blur() { if (deferredDraw) queueMicrotask(() => draw(true)); }
   main.addEventListener('focusout', blur);
+  if(headerHost)headerTools.addEventListener('click',click);
   main.addEventListener('click', click);
   main.addEventListener('input', input);
   main.addEventListener('change', change);
-  return { draw, load, leave, dispose() { window.removeEventListener('resize',resized);cancelAnimationFrame(resizeFrame);main.removeEventListener('pointercancel',pointerCancel);main.removeEventListener('pointerdown',pointerDown);main.removeEventListener('pointerup',pointerUp);main.removeEventListener('keydown',keydown);scenarioGeneration++; leave(); obs.disconnect(); document.removeEventListener('visibilitychange', visible); main.removeEventListener('focusout', blur); main.removeEventListener('click', click); main.removeEventListener('input', input);main.removeEventListener('change',change); } };
+  return { draw, load, leave, dispose() { headerTools.removeEventListener('click',click);headerTools.remove();main.removeEventListener('pointermove',pointerMove);main.removeEventListener('pointerout',pointerOut);window.removeEventListener('resize',resized);cancelAnimationFrame(resizeFrame);main.removeEventListener('pointercancel',pointerCancel);main.removeEventListener('pointerdown',pointerDown);main.removeEventListener('pointerup',pointerUp);main.removeEventListener('keydown',keydown);scenarioGeneration++; leave(); obs.disconnect(); document.removeEventListener('visibilitychange', visible); main.removeEventListener('focusout', blur); main.removeEventListener('click', click); main.removeEventListener('input', input);main.removeEventListener('change',change); } };
 }

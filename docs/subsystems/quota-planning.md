@@ -231,3 +231,31 @@ UI polish follows Unslop by Damir Sokolovsky (@heydamir), CC BY 4.0, preserving
 Magpie's palette, fonts, shell and menu components. Regression tests cover capacity
 conservation, model bottlenecks, finite cards, sliding resets, binding uniqueness,
 corrupt/stale settings, authentication, privacy and all four tabs in both engines.
+
+
+### Prototype parity correction
+
+The production dashboard ports the approved battery-review layout directly into
+`planner-dashboard.js` and scoped `planner.css`: underlined tabs, live refresh
+strip, two-column balance/pace summary, account composition as the default,
+percentage scale, refill annotations, weekend backgrounds through consumption
+bars, date scrollbar and Back to now together, account readouts below their
+heading, and event cards. Secondary pages keep the prototype's metric rows,
+comparison-area charts, member scope, and side-by-side admission controls/results.
+Magpie's existing navigation shell is retained. Global `.seg` and `.chart` styles
+are explicitly overridden inside this page to prevent floating title-bar controls
+and nested chart borders. Page header controls are removed on disposal.
+
+Currency uses the actual backend exchange rate; the page toggle does not change
+Settings. Plan price is a label only. Measured/forecast switches affect the
+conditional future; history is never rewritten. Historical interpolation stops
+at missing readings, reset boundaries and gaps over fifteen minutes, in both
+chart and hover readout. Identity markup is left to the existing privacy masker;
+the renderer must not create its own `.pii` spans because those are owned and
+replaced by that masker's lifecycle.
+
+The health admission view compares natural-only and finite-card scenarios,
+reports projected card use and unmet demand by model, and finds the calibrated
+weekly capacity required for 20% demand headroom using the existing compatibility
+flow. It is an illustration, not an admission operation or guaranteed minimum
+number of cards. No actual dispatch or card executor changes in this UI correction.

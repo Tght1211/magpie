@@ -4,6 +4,9 @@ const path = require('node:path');
 const {test} = require('node:test');
 const {chromium,webkit} = require('playwright');
 const assets = process.env.MAGPIE_PLANNER_ASSETS || path.resolve(__dirname,'../assets');
+for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webkit'])) test(engine+': quota planning page',async(t)=>{
+ const browser=await (engine==='webkit'?webkit:chromium).launch(); t.after(()=>browser.close());
+ for(const lang of ['en','zh','zh-TW','ja','de']) {
 const now = Date.now(), at = h=>new Date(now+h*3600000).toISOString();
 const quota=(user,used,h,expiry)=>({provider:'codex',user,plan:'pro',readAt:at(0),windows:[{name:'7 days',used,resetsAt:at(h)}],resets:{count:1,each:[{until:at(expiry)}]}});
 const accounts=[quota('a@example.test',13,160,55),quota('b@example.test',100,40,55),quota('c@example.test',45,20,600),quota('d@example.test',60,80,1000)].map((q,i)=>({...q,plan:i===0?'Pro 20x':'Pro 5x'}));
@@ -12,9 +15,7 @@ const poolData=accounts.map((q,i)=>({provider:q.provider,user:q.user,samples:[{f
 const planInput={now,hours:72,demand:3,demands:{codex:3},accounts:accounts.map((q,i)=>({id:JSON.stringify([q.provider,q.user]),group:q.provider,full:i===0?400:100,left:100-q.windows[0].used,tokens:1000000,reset:Date.parse(q.windows[0].resetsAt),periodHours:168,auto:true,leadMinutes:30,cards:[]}))};
 const solveFixture=input=>({status:'optimal-discrete',spent:20,waste:10,remaining:200,tokens:200000,events:[],allocations:input.accounts.map(a=>({id:a.id,from:input.now,to:input.now+3600000,amount:1})),points:[{at:input.now,values:input.accounts.map(a=>a.full*a.left/100),total:input.accounts.reduce((n,a)=>n+a.full*a.left/100,0)},{at:input.now+72*3600000,values:input.accounts.map(a=>a.full*.5),total:input.accounts.reduce((n,a)=>n+a.full*.5,0)}]});
 const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:100,cache_unknown:100,cache_unknown_calls:1};
-for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webkit'])) test(engine+': quota planning page',async(t)=>{
- const browser=await (engine==='webkit'?webkit:chromium).launch(); t.after(()=>browser.close());
- for(const lang of ['en','zh','zh-TW','ja','de']) {
+
   const theme=lang==='zh'?'dark':'light';
   const page=await browser.newPage({viewport:{width:1440,height:950},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
   page.setDefaultNavigationTimeout(60000);
@@ -48,6 +49,39 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   await page.goto('http://magpie.test/?view=quota-planner');
   await page.locator('#qpBody .qp-account').first().waitFor();
   assert.equal(await page.locator('#qpBody .qp-account').count(),4);
+  assert.equal(await page.locator('.headline h1').count(),1);
+  assert(await page.locator('.qp-account-grid').evaluate(e=>e.previousElementSibling?.classList.contains('detail-head')),'account readout is below its heading');
+  const summaryBox=await page.locator('.summary').boundingBox(), controlsBox=await page.locator('.forecast-controls').boundingBox();
+  assert(controlsBox.y>=summaryBox.y+summaryBox.height-1,'forecast controls do not overlap summary');
+  if(lang==='zh'){
+   assert(Math.abs(summaryBox.height-153.6875)<2,'approved battery summary density');
+   assert.equal(await page.locator('.summary').evaluate(e=>getComputedStyle(e).padding),'20px');
+   assert(Math.abs((await page.locator('.qp-account-grid').boundingBox()).height-116.5)<2,'approved account readout density');
+  }
+  await page.locator('[data-qp-unit=cny]').click();
+  assert((await page.locator('[data-qp-number=pool-total]').textContent()).includes('¥'));
+  await page.locator('[data-qp-unit=usd]').click();
+  assert.equal(await page.locator('.refresh-strip').count(),1);
+  await page.locator('#qpTabs [data-tab=plan]').focus();
+  await page.keyboard.press('End');assert.equal(await page.locator('#qpTabs [data-tab=health]').getAttribute('aria-selected'),'true');
+  await page.keyboard.press('Home');assert.equal(await page.locator('#qpTabs [data-tab=plan]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('[data-forecast-mode]').count(),2);
+  assert(await page.locator('.qp-usage-bar').count()>0);
+  assert(await page.locator('.qp-refill-dot').count()>0);
+  const beforeMode=await page.locator('.total-line.future-line').first().getAttribute('d');
+  await page.locator('[data-forecast-mode=actual]').click();
+  assert.notEqual(await page.locator('.total-line.future-line').first().getAttribute('d'),beforeMode);
+  await page.locator('[data-forecast-mode=recommended]').click();
+  assert.equal(await page.locator('#qpDateThumb').count(),1);
+  if(process.env.ARTIFACT_DIR&&lang==='zh'){
+   await fs.mkdir(process.env.ARTIFACT_DIR,{recursive:true});
+   for(const tab of ['plan','trend','keys','health']){
+    await page.locator(`#qpTabs [data-tab=${tab}]`).click();
+    await page.locator('.headline h1').waitFor();
+    await page.screenshot({path:path.join(process.env.ARTIFACT_DIR,`${tab}-${engine}-desktop.png`),fullPage:true});
+   }
+   await page.locator('#qpTabs [data-tab=plan]').click();
+  }
   assert.equal(await page.locator('[data-tab=mechanism]').count(),0);
   assert.equal(await page.locator('[data-qp-composition=accounts]').getAttribute('aria-pressed'),'true');
   assert(await page.locator('.qp-account-area').count()>0);
@@ -57,33 +91,34 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   await page.locator('[data-qp-move="1"]').click();
   assert.notEqual(await page.locator('#qpDate').inputValue(),oldDate);
   await page.locator('[data-qp-move=now]').click();
-  await page.locator('[data-qp-scale=years]').click();
+  await page.locator('[data-qp-scale-menu]').click();await page.getByRole('menuitemradio').last().click();
   assert(!/NaN|Infinity/.test(await page.locator('.v-explorer-chart').innerHTML()));
   await page.locator('[data-qp-scale=week]').click();await page.locator('[data-qp-move=now]').click();
   await page.locator('[data-qp-rescue]').click();
-  assert.equal(await page.locator('[data-qp-rescue]').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.locator('[data-qp-rescue]').isChecked(),false);
   await page.locator('#qpNavigator').evaluate(e=>{e.value=Number(e.value)+86400000;e.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(250);
   await page.locator('[data-qp-move=now]').click();
   await page.evaluate(()=>hideAccounts.set(true));
   await page.locator('#qpBody .qp-account .pii').first().waitFor();
   await page.evaluate(()=>hideAccounts.set(false));
+  assert((await page.locator('.qp-account').first().textContent()).includes('a@example.test'),'unmask restores account identity');
   await page.locator('#qpTabs [data-tab=trend]').click();
   await page.locator('[data-review-account="1"]').click();
   assert.equal(await page.locator('[data-review-account="1"]').getAttribute('aria-pressed'),'true');
   await page.locator('#qpTabs [data-tab=keys]').click();
   await page.locator('[data-member="0"]').click();
   assert.equal(await page.locator('#qpBody img').count(),0);
-  assert.equal(await page.locator('#qpBody svg').count(),2);
+  assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),2);
   if(lang==='en'){
    await page.locator('[data-bind-member]').click();await page.getByRole('menuitemradio').first().click();
    await page.getByText('Bind the contributed account to compare standalone and shared usage.',{exact:true}).waitFor();
    assert.equal(bindings.k0,'');
    await page.locator('[data-bind-member]').click();await page.getByRole('menuitemradio').nth(1).click();
-   await page.waitForFunction(()=>document.querySelectorAll('#qpBody svg').length===2);
+   await page.waitForFunction(()=>document.querySelectorAll('#qpBody .analysis-plot svg').length===2);
    assert.equal(bindings.k0,'codex/0');
-   memberComplete=false;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent==='—');
-   memberComplete=true;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent!=='—');
+   memberComplete=false;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent.includes('—'));
+   memberComplete=true;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent&&!document.querySelector('#qpBody .v-metrics b').textContent.includes('—'));
   }
 
   await page.locator('[data-key-model="codex/model"]').click();

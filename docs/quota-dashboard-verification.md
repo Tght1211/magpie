@@ -77,3 +77,36 @@ old code does not resolve the failure or satisfy the release criteria.
 This is a development-branch integration. No production deployment, release,
 live account invocation or real reset-card consumption was performed. The full
 verification gaps must be resolved before treating this as a validated release.
+
+
+## Approved prototype parity correction — 2026-11-06
+
+The first dashboard integration (`ef08d574`, deployed as
+`0.1.2995-quota-dashboard.1`) preserved data and passed its functional checks,
+but did not faithfully reproduce the approved UI. This correction directly
+ports all four pages from the approved local `quota-battery-review` prototype
+served at `127.0.0.1:43550` and keeps the real API adapters.
+
+The prototype and candidate were captured at 1440 px in both light and dark
+modes. Matching main-page geometry was measured: heading 52 px; balance summary
+153.6875 px with 20 px padding; forecast controls 49 px; date strip 101.5 px;
+account grid 116.5 px. Native shell dimensions and actual-data-dependent content
+are intentionally different. Screenshots use fictional fixtures; production
+checks mask identities. Local evidence: `/tmp/magpie-ui-parity/`.
+
+Verified on the correction:
+
+- Chromium and WebKit: all four tabs, five locales, 1440/1024/390 px, currency,
+  forecast mode, cards, date range, privacy round-trip, explicit binding,
+  admission inputs, stale/failed reads, periodic refresh and navigation cleanup.
+- Four pure/fixture model suites plus i18n guards passed 27/27; final browser
+  and i18n invocation passed 6/6, including measured geometry and keyboard tab
+  navigation assertions.
+- Linux amd64 nogui final build passed with isolated HOME.
+- Candidate assets against authenticated production reads passed both engines,
+  all four tabs at 1440/390 px and observed automatic refresh. No production
+  bindings, routing settings or card operations were changed by this check.
+
+Earlier full-suite limitations above remain disclosed; this correction does not
+claim a new full repository Go/GUI suite pass. It changes frontend assets only,
+with no settings migration, routing change or reset-card operation.
