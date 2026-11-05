@@ -100,3 +100,11 @@ request fixtures for full lanes, session fallback and slow starts. The GUI
 API test covers authentication, malformed/oversized input and no publication.
 `quota-planner.test.cjs` covers five locales and both Chromium/WebKit, including
 masking, narrow layouts, card addition, official reset and dispatch controls.
+
+
+### Display density
+
+Planner cards use the shared application palette and controls with 12 px
+panel spacing, compact metric/table padding, and a bounded pool-chart height.
+The chart retains its minimum width and internal horizontal scroll on phones;
+page-level overflow is checked in both engines and all supported languages.

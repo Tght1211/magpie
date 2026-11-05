@@ -67,8 +67,8 @@ observe animation completion/progress instead of host-clock sleeps, ignore
 WebKit's outer text whitespace and include the quota-planner navigation item.
 The final account/model and reset-switch batch passed 40/40; the context-map
 and signed-out-account batch passed in both engines. Older failed attempts
-remain in the local logs. Full-suite failures outside these corrected batches
-remain a release blocker; no production binary has been replaced.
+remain in the local logs. At that checkpoint, full-suite failures outside these corrected batches
+blocked replacement of the production binary.
 
 Additional verified fixture batches: picker folding 22/22, editor alignment
 2/2 (all languages and widths inside each case), backdrop dragging 8/8,
@@ -100,8 +100,8 @@ authorized scroll when its initial time allowance expired; frames now record
 the reader's position and renew the allowance. The held-animation regression
 fails on the preceding source and passes on the fix. Header observer changes
 are deferred outside the observer-delivery loop. The focused animation,
-header and planner batch passed 32/32. Unresolved full-suite regressions still
-block the production replacement.
+header and planner batch passed 32/32. At that checkpoint, unresolved full-suite regressions still
+blocked the production replacement.
 
 The local executable GUI checks also passed against the server's read-only
 snapshot in both engines (three accounts, four tabs, two widths). The GUI Go
@@ -113,3 +113,27 @@ The routing-group and icon-picker fixture batch passed 78/78 after waiting
 for settled layout and using reader wheel input before position baselines.
 The agent updater fixture now waits for the wheel to arrive before recording
 its position; both engines passed its eight subtests.
+
+
+## Compact layout and deployment preparation
+
+The account pool pages now use 12 px panel spacing, smaller card and table
+padding, tighter metric rows and a 320 px maximum pool-chart height. Key
+history stays aligned to the top of its panel. Fonts, controls and colors
+continue to inherit the application styles; this CSS is scoped to the planner.
+The existing planner/model tests passed 6/6, covering Chromium, WebKit and all
+five languages. No new timing or pixel-exact fixture was added for spacing.
+
+The user subsequently requested installation of the complete custom build.
+The deployment uses an executable built from this compact layout, a consistent
+server-side data archive, preserved settings/keys/history and binary rollback
+on failed health checks. The full GUI suite remains incomplete with the earlier
+unresolved cases; targeted checks are not a claim that this suite is green.
+This is a custom server update, not an official upstream release.
+
+
+The final compact assets passed native, Linux and Windows vet/build checks.
+The rebuilt local executable also passed the four-tab checks in Chromium and
+WebKit at desktop/phone widths in all five languages, including the real demo
+solver. Its cold-start test now waits for the initial state snapshot before
+reading settings (the endpoint can initially return null).
