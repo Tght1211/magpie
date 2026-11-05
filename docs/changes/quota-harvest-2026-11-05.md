@@ -68,3 +68,12 @@ The final account/model and reset-switch batch passed 40/40; the context-map
 and signed-out-account batch passed in both engines. Older failed attempts
 remain in the local logs. Full-suite failures outside these corrected batches
 remain a release blocker; no production binary has been replaced.
+
+Additional verified fixture batches: picker folding 22/22, editor alignment
+2/2 (all languages and widths inside each case), backdrop dragging 8/8,
+gateway keys/folding/model limits 10/10, skill selection/removal 22/22, and
+deprecation notice 8/8. The long grip batch still has navigation timeouts;
+its isolated Japanese narrow-panel case passes, which is not sufficient
+evidence to call the batch fixed. Exploratory changes for that batch were
+reverted. The staged Linux binary's SHA-256 and version match on the server;
+the active service remains `0.1.2877-quota-preview.1`.

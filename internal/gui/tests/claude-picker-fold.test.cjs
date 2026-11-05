@@ -21,6 +21,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { test } = require("node:test");
 const { chromium, webkit } = require("playwright");
+const { settled } = require("./reader.cjs");
 
 const assets = path.resolve(__dirname, "../assets");
 const own = (value, note, alias) => ({ value, note, icon: "claude-color", group: "Claude Code", direct: "Anthropic", ...(alias ? { alias } : {}) });
@@ -95,7 +96,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator(row).waitFor();
       await page.locator(`${row} > .field.ag-start[data-key="model"]`).click();
       await page.locator("#pop:not([hidden]) #list li").first().waitFor();
-      await page.waitForTimeout(400); // the picker grows open
+      await page.waitForLoadState("networkidle");
+      await settled(page); // finish the picker and metadata redraw before measuring
       return page;
     };
     // the rows as drawn: name, note, and whether it's the value set

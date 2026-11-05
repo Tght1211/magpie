@@ -63,9 +63,11 @@ for (const engine of process.env.BROWSER ? [process.env.BROWSER] : ["chromium", 
         await page.getByRole("dialog").waitFor();
         const field = modal.locator("input[type=text], input:not([type])").first();
         await field.waitFor();
+        await page.waitForLoadState("networkidle");
         const name = await field.inputValue();
 
         // #1373: from inside the name field, out past the dialog, let go
+        await field.hover(); // wait for the editor to finish positioning before measuring a drag
         const start = await field.boundingBox();
         // as the reporter does, past the field's end to bring the rest in
         const beside = { x: width - 3, y: start.y + start.height / 2 };

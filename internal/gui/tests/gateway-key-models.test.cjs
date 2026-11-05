@@ -37,7 +37,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const scrolled = async () => [await view.evaluate((v) => v.scrollTop), await page.evaluate(() => window.scrollY)];
       await page.mouse.move(500, 300);
       await page.mouse.wheel(0, 120);
-      await page.waitForTimeout(100);
+      await page.waitForFunction(() => document.querySelector("#view-gateway").scrollTop > 0);
       const at = await scrolled();
       // the app's menu, not a native select
       await row("work").hover();
@@ -76,6 +76,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.deepEqual(await scrolled(), at, "no click moved the page");
       // narrow: the row fits
       await page.setViewportSize({ width: 560, height: 740 });
+      await page.waitForFunction(() => !document.body.classList.contains("side-nav"));
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
       assert.deepEqual(errors, []);
     });

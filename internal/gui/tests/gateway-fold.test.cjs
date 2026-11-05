@@ -69,8 +69,10 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
     assert.equal(await page.locator("#connectNote .copy").count(), 1, "with a copy button");
 
     // scrolled so the Connect head is well down the view, opening leaves it there
-    await page.locator(view).evaluate((v) => { v.scrollTop = 40; });
-    await page.waitForTimeout(300);
+    // Real reader input is needed: the shell undoes unsolicited scrollTop.
+    await page.mouse.move(450, 300);
+    await page.mouse.wheel(0, 40);
+    await page.waitForFunction(() => document.querySelector("#view-gateway").scrollTop > 0);
     const was = await top(page, "#foldConnect");
     await fold.click();
     await page.waitForTimeout(600);

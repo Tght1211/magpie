@@ -106,7 +106,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
 
         // a phone: under the text, at its end, nothing wider than the page
         await page.setViewportSize({ width: 390, height: 760 });
-        await page.waitForTimeout(150);
+        await page.waitForFunction(() => !document.body.classList.contains("side-nav"));
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await shot("phone");
         const p = await look();
         assert(!p.wide, "the page scrolls sideways");

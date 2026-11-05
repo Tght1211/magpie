@@ -80,18 +80,8 @@ function server(lang, state, posts) {
   };
 }
 
-// the reader scrolls (not a click) till what they'll press is out from
-// under the bar that stays in view at the list's foot
-const reach = async (page, loc) => {
-  for (let i = 0; i < 20; i++) {
-    const b = await loc.boundingBox();
-    if (b && await loc.evaluate((e, [x, y]) => e.contains(document.elementFromPoint(x, y)), [b.x + b.width / 2, b.y + b.height / 2])) return;
-    await page.mouse.move(b.x + b.width / 2, Math.max(b.y - 40, 10));
-    await page.mouse.wheel(0, 120);
-    await page.waitForTimeout(80);
-  }
-  assert.fail(`${loc} is never out from under the bar`);
-};
+// Shared reader helper waits for each wheel event and handles both directions.
+const { reach } = require("./reader.cjs");
 // a click where the thing is; nothing scrolls, and what was clicked stays put
 const press = async (page, loc) => {
   await reach(page, loc);
