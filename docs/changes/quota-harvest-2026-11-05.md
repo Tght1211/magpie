@@ -60,7 +60,8 @@ and cache lifecycle tests also passed with race detection.
 
 The complete GUI run was interrupted in the O-prefixed files, after reporting
 additional regressions and a Playwright private-import compatibility failure.
-This record does not claim a complete green GUI suite or a server deployment.
+That run did not establish a complete green GUI suite or a server deployment.
+The later deployment and its separate checks are recorded below.
 
 Browser fixture corrections wait for initial account reads before using rows,
 observe animation completion/progress instead of host-clock sleeps, ignore
@@ -77,7 +78,7 @@ deprecation notice 8/8. The long grip batch still has navigation timeouts;
 its isolated Japanese narrow-panel case passes, which is not sufficient
 evidence to call the batch fixed. Exploratory changes for that batch were
 reverted. The staged Linux binary's SHA-256 and version match on the server;
-the active service remains `0.1.2877-quota-preview.1`.
+the active service at that checkpoint was `0.1.2877-quota-preview.1`.
 
 ## Local deployment validation
 
@@ -137,3 +138,31 @@ The rebuilt local executable also passed the four-tab checks in Chromium and
 WebKit at desktop/phone widths in all five languages, including the real demo
 solver. Its cold-start test now waits for the initial state snapshot before
 reading settings (the endpoint can initially return null).
+
+
+## Production deployment — November 5, 2026
+
+Installed `0.1.2995-quota-harvest.1` from application commit `ca5271d7`.
+Linux amd64 executable SHA-256:
+`42f7f79ae47f17193acb4eac3307e1a379320640b6b5563602bd312a1f4368ab`.
+
+The initial attempts left the old service untouched while requests stayed
+active. Deployment began after observing an idle interval. A consistent data
+archive, previous executable, environment and service definition are retained
+under `/var/backups/magpie-custom/20261105T064852Z-quota-harvest.1`.
+Configuration files, including caller keys and provider settings, matched
+their previous hashes. Existing quota identities were retained and the exact
+previous usage-log prefix was preserved. OAuth data was not restored from
+an old snapshot. The new service and gateway are active; automatic upstream
+replacement remains disabled. Existing routing and card-use settings were kept.
+
+The pool/plan APIs and compact static assets passed authenticated checks.
+Public HTTPS GUI checks passed Chromium and WebKit, all four tabs at desktop
+and phone widths, without page errors or page-level overflow. Subsequent real
+traffic included successful completed requests on the updated gateway; these
+were observed user requests, not extra test calls. The final GUI Go package
+also passed under isolated HOME (78.272 s).
+
+The earlier incomplete full GUI run and its unresolved failures remain open.
+This deployment record does not turn those failures into passes or claim that
+all historical regression work is finished.
