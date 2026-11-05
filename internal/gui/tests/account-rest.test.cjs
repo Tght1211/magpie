@@ -75,6 +75,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.locator(".row.provider", { hasText: "WorkBuddy AI" }).first().click();
         const row = (id) => page.locator(`.editor .accts .acc[data-account-id="${id}"]`);
         await row(USER).waitFor();
+        await page.waitForFunction(() => loginUsage["workbuddy-ai"]?.at && !loginUsage["workbuddy-ai"].loading);
         const tr = (k, v) => page.evaluate(([k, v]) => t(k, v), [k, v]);
         const back = await page.evaluate((u) => restBack(u), until);
         const why = "429 " + (await tr("quota used up"));

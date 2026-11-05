@@ -180,6 +180,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         // every tile inside the map, none on another
         // read once the tiles have come in and the card has opened, the
         // map and its tiles in one look
+        // WebKit registers the animations a frame after the card opens.
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await page.waitForFunction(() => !document.getAnimations().some((a) => a.playState === "running" && a.effect?.target?.closest?.(".ctx-sess.open")));
         const { rects, box } = await map.evaluate((m) => {
           const rc = (n) => { const r = n.getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; };

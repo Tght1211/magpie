@@ -77,6 +77,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         page.on("dialog", (d) => { dialogs.push(d.message()); d.dismiss(); });
         await page.route("**/*", server(lang, posts));
         await page.goto("http://magpie.test/?view=agents");
+        await page.waitForLoadState("networkidle"); // initial state reads replace the picker anchor
         await page.locator(`${row} .ag-conn`).waitFor();
         const tr = (k, v) => page.evaluate(([k, v]) => t(k, v), [k, v]);
         const missing = await page.evaluate(([keys, lang]) => lang === "en" ? [] : keys.filter((k) => !I18N[lang]?.[k]), [KEYS, lang]);
@@ -85,7 +86,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const top = await tops();
         const start = page.locator(`${row} > .field.ag-start`);
         const item = (text) => page.locator("#pop #list li", { hasText: text }).first();
-        const open = async () => { await start.click(); await page.locator("#pop:not([hidden]) #list li").first().waitFor(); };
+        // Opening starts model-speed reads, whose reply redraws the list.
+        const open = async () => { await start.click(); await page.locator("#pop:not([hidden]) #list li").first().waitFor(); await page.waitForLoadState("networkidle"); };
         const on = () => page.locator(`${row} .ag-conn`).getAttribute("aria-checked");
 
         // each says which way it goes; magpie's are listed first
@@ -105,12 +107,12 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         const ownHead = order.findIndex((x) => x.trim() === own);
         assert.ok(at("MiniMax M2.7") < ownHead && ownHead < at("GLM-5.1"), `Pi's own heading over its own models: ${JSON.stringify(order)}`);
         const head = page.locator("#pop #list li.group.own");
-        const look = await head.evaluate((li) => {
+        const look = await head.evaluateAll(([li]) => {
           const s = li.querySelector(".own-sign"), cs = getComputedStyle(s), r = li.getBoundingClientRect(), list = li.closest("#pop").getBoundingClientRect();
           return { transform: cs.textTransform, height: r.height, inside: r.right <= list.right + 0.5, border: getComputedStyle(li).borderLeftWidth, image: getComputedStyle(li).backgroundImage };
         });
         assert.equal(look.transform, "none", "the words read as written");
-        const plain = await page.locator("#pop #list li.group:not(.own)", { hasText: "OpenCode Go" }).evaluate((li) => li.getBoundingClientRect().height);
+        const plain = await page.locator("#pop #list li.group:not(.own)", { hasText: "OpenCode Go" }).evaluateAll(([li]) => li.getBoundingClientRect().height);
         assert.equal(look.height, plain, "one line, as tall as magpie's OpenCode Go heading");
         assert.ok(look.inside, `inside the picker at ${width}px`);
         assert.equal(look.border, "0px", "no stripe");

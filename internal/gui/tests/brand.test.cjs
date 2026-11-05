@@ -56,8 +56,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const where = `${c.web ? "web" : "window"} on ${c.platform} at ${width}px`;
       const side = width >= 1024;
       const brand = page.locator(side ? "#side .side-top .brand" : ".top .brand");
-      assert.equal(await brand.isVisible(), c.shown, where);
-      if (c.shown) {
+      // The extra quota-planner tab can exhaust the horizontal header.
+      // fitTop deliberately hides the logo only at its crowded stage.
+      const crowded = !side && await page.locator(".top.crowded").count() > 0;
+      assert.equal(await brand.isVisible(), c.shown && !crowded, where);
+      if (c.shown && !crowded) {
         assert.ok(await brand.locator(".logo svg").isVisible(), `${where}: logo`);
         // a header short of room keeps the logo only (fitTop's tight)
         const tight = !side && await page.locator(".top.tight").count();

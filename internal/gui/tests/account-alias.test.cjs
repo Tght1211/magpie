@@ -99,6 +99,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.locator(".row.provider", { hasText: "ZCode" }).first().click();
         const row = (id) => page.locator(`.editor .accts .acc[data-account-id="${id}"]`);
         await row(TEAM).locator(".acct-who").waitFor();
+        // loginUsageOf replaces the initial rows once its read finishes.
+        await page.waitForFunction(() => loginUsage.zcode?.at && !loginUsage.zcode.loading);
 
         // unnamed: its address, and the key plan it is the same seat as
         const team = row(TEAM).locator(".acct-who");

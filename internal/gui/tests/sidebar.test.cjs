@@ -61,7 +61,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       assert.equal(await page.locator(".top #nav").count(), 0, "and not in the header");
       assert.deepEqual(await page.locator("#nav .nav-gl:visible").allTextContents(), w.groups);
       assert.deepEqual(await page.locator("#nav button[data-view]").evaluateAll((bs) => bs.map((b) => b.dataset.view)),
-        ["agents", "sessions", "library", "providers", "routing", "gateway", "usage", "masking", "plugins"]);
+        ["agents", "sessions", "library", "providers", "routing", "gateway", "usage", "quota-planner", "masking", "plugins"]);
       assert.ok(await page.locator("#side .side-foot #prefs").isVisible(), "Settings at the sidebar's foot");
       assert.equal((await page.locator("#prefs .side-l").textContent()).trim(), w.settings);
       // no page's name or group cut, and nothing scrolls sideways
@@ -201,10 +201,19 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.route("**/*", serve("en", []));
       await page.goto("http://magpie.test/");
       await page.waitForSelector("#nav button.on");
+      // Record animation creation: it can finish before the next driver call.
+      await page.evaluate(() => {
+        window.__navAnimations = 0;
+        const animate = Element.prototype.animate;
+        Element.prototype.animate = function (...args) {
+          if (this.matches(".nav-sub")) window.__navAnimations++;
+          return animate.apply(this, args);
+        };
+      });
       await page.locator("#prefs").click();
       const box = page.locator("#side .nav-sub").first();
       await box.waitFor();
-      assert.ok(await box.evaluate((b) => b.getAnimations().length > 0), "the list unrolls");
+      assert.ok(await page.evaluate(() => window.__navAnimations > 0), "the list unrolls");
       await page.locator('#nav button[data-view="agents"]').click();
       // folding: out of reach at once, gone once it has played
       assert.equal(await page.locator(".nav-sub:not(.leaving)").count(), 0);

@@ -112,7 +112,7 @@ function server(lang, posts, broken) {
 const tabs = (page) => page.evaluate(() => [...document.querySelectorAll("#nav button[data-view]")].filter((b) => !b.hidden && b.offsetParent && getComputedStyle(b).display !== "none").map((b) => b.dataset.view));
 const viewShown = (page) => page.evaluate(() => [...document.querySelectorAll("main.view")].filter((v) => !v.hidden).map((v) => v.id));
 // the tabs with Sessions and Library off, the preset's masking on
-const KEPT = ["agents", "providers", "routing", "gateway", "usage", "masking", "plugins"];
+const KEPT = ["agents", "providers", "routing", "gateway", "usage", "quota-planner", "masking", "plugins"];
 const rowsOf = (page) => page.evaluate(() => [...document.querySelectorAll("#builtinList .feat-row")].map((r) => {
   const b = r.querySelector('[role="switch"]');
   return { id: r.dataset.id, name: r.querySelector(".name").textContent, on: b.getAttribute("aria-checked"), disabled: b.disabled, why: r.querySelector(".feat-why")?.textContent || "" };
@@ -262,7 +262,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await usageSwitch.click();
         await page.waitForSelector('#builtinList [data-id="usage"] [aria-checked="false"]');
         assert.deepEqual(posts.at(-1), ["usage", false], where);
-        if (width >= 800) assert.deepEqual(await tabs(page), ["agents", "library", ...KEPT.slice(1).filter((k) => k !== "routing" && k !== "usage")], `${where}: Usage gone`);
+        if (width >= 800) assert.deepEqual(await tabs(page), ["agents", "library", ...KEPT.slice(1).filter((k) => k !== "routing" && k !== "usage" && k !== "quota-planner")], `${where}: Usage gone`);
         assert.deepEqual(await viewShown(page), ["view-plugins"], `${where}: Plugins stays`);
         // Discover brings the search back
         await pluginTabs(page, side).nth(1).click();

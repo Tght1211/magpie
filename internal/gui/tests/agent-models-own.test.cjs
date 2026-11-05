@@ -134,7 +134,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await open("dsh");
         const box = pop.locator(".am-own");
         const sw = box.locator(".lib-switch");
-        assert.equal(await box.innerText(), w.show);
+        assert.equal((await box.innerText()).trim(), w.show);
         assert.equal(await sw.getAttribute("role"), "switch");
         assert.equal(await sw.getAttribute("aria-checked"), "true");
         // whole on the screen, inside the list's box

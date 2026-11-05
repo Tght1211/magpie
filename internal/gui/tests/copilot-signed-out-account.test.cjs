@@ -88,7 +88,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
           await t.test(`${lang} ${width}: ${c.name}`, async () => {
             const posts = [];
             const { page, errors, card } = await open(c.logins, posts);
-            const pill = await card.locator(".key").innerText();
+            const pill = (await card.locator(".key").innerText()).trim();
             if (c.pill) assert.equal(pill, w.out, "every account in use refused: the card says signed out");
             else assert.notEqual(pill, w.out, "another account still in use: the card isn't signed out");
             await card.click();
@@ -101,7 +101,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
             // the reason, in the user's language, below the controls
             const aq = row.locator(".aq .aq-none");
             await aq.waitFor();
-            assert.equal(await aq.innerText(), w.reason);
+            assert.equal((await aq.innerText()).trim(), w.reason);
             // read once the row has stopped being drawn again: what comes in
             // after the editor opens draws the accounts again, and a row
             // looked at across that is gone (null boxes, "not attached")
@@ -144,7 +144,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await t.test(`${lang} ${width}: an account GitHub takes has no Sign in again`, async () => {
           const posts = [];
           const { page, errors, card } = await open([{ user: "octocat", plan: "Pro", active: true, on: true }], posts);
-          assert.notEqual(await card.locator(".key").innerText(), w.out);
+          assert.notEqual((await card.locator(".key").innerText()).trim(), w.out);
           await card.click();
           const row = page.locator(".accts .acc", { hasText: "octocat" });
           await row.waitFor();

@@ -51,13 +51,27 @@ const where = (page) => page.evaluate((r) => {
   const at = (s) => Math.round((el.querySelector(s)?.getBoundingClientRect().top - top) * 4) / 4;
   return { height: Math.round(el.getBoundingClientRect().height), line: parseFloat(getComputedStyle(el).borderBottomWidth), who: at(":scope > .who"), sw: at(":scope > .ag-conn"), exp: el.querySelector(".ag-exp") ? at(":scope > .ag-exp") : null };
 }, row);
-// the row's height every frame for a while, from a click on its link
-const heights = (page, ms) => page.evaluate(([r, ms]) => new Promise((done) => {
-  const hs = [], t0 = performance.now();
-  const f = () => { hs.push(Math.round(document.querySelector(r).getBoundingClientRect().height)); if (performance.now() - t0 < ms) requestAnimationFrame(f); else done(hs); };
+// Sample the real sheet animation at deterministic progress points. Host-clock
+// sleeps can see zero frames on a busy renderer and do not test interpolation.
+const heights = (page) => page.evaluate(async (r) => {
   document.querySelector(r + " .ag-link").click();
-  requestAnimationFrame(f);
-}), [row, ms]);
+  const box = document.querySelector(r + " > .ag-exp");
+  const animation = box?.getAnimations().find((a) => a.effect.target === box);
+  const height = () => Math.round(document.querySelector(r).getBoundingClientRect().height);
+  const hs = [];
+  if (animation) {
+    animation.pause();
+    const duration = animation.effect.getComputedTiming().duration;
+    for (let step = 0; step <= 12; step++) {
+      animation.currentTime = duration * step / 12;
+      hs.push(height());
+    }
+    animation.finish();
+  }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  hs.push(height());
+  return hs;
+}, row);
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const width of [980, 560]) {
@@ -74,7 +88,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator(`${row} .ag-conn`).waitFor();
 
       const shut = await where(page);
-      const opening = await heights(page, 800);
+      const opening = await heights(page);
       const open = await where(page);
       assert.equal(open.who, shut.who, "the name moved");
       assert.equal(open.sw, shut.sw, "the switch moved");
@@ -86,7 +100,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const mid = opening.filter((h) => h > shut.height && h < full);
       assert.ok(mid.length >= 3, "slid open: " + opening);
       for (let i = 1; i < opening.length; i++) assert.ok(opening[i] >= opening[i - 1], "grew only: " + opening);
-      const closing = await heights(page, 700);
+      const closing = await heights(page);
       assert.ok(closing.filter((h) => h > shut.height && h < full).length >= 3, "slid shut: " + closing);
       for (let i = 1; i < closing.length; i++) assert.ok(closing[i] <= closing[i - 1], "shrank only: " + closing);
       assert.deepEqual(await where(page), shut, "shut again as it was");
@@ -108,7 +122,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await reach(page, goose);
       await goose.click();
       await page.waitForTimeout(500);
-      const now = await heights(page, 120);
+      const now = await heights(page);
       assert.equal(now[0], full, "opened at once: " + now);
       assert.deepEqual(errors, []);
     });

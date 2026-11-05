@@ -79,6 +79,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await row.waitFor({ timeout: 60000 });
         await row.click();
         await page.locator(".editor .acc").first().waitFor();
+        await page.waitForFunction(() => loginUsage.claude?.at && !loginUsage.claude.loading);
         return { page, errors, posts };
       };
 

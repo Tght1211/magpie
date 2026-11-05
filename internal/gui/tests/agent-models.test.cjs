@@ -92,7 +92,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await row.locator(".ag-link").click();
       const entry = row.locator(".ag-exp .ag-chips .ag-quiet");
       const hidden = async () => (await row.locator(".ag-exp .ag-chips .ag-hint").allInnerTexts()).join("").trim();
-      const chips = async () => (await row.locator(".ag-chip").allInnerTexts()).map((s) => s.replace(/\s+/g, " "));
+      const chips = async () => (await row.locator(".ag-chip").allInnerTexts()).map((s) => s.replace(/\s+/g, " ").trim());
       await entry.waitFor();
       // the row has slid open (its slide is agent-expand-steady's)
       await page.waitForFunction(() => document.getAnimations().length === 0);
@@ -196,7 +196,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       // the providers down the left: one picked shows its models alone,
       // a long one open; a search looks in all of them; All brings back the lot
       const rail = pop.locator(".am-rail .am-ri");
-      assert.deepEqual((await rail.allInnerTexts()).map((s) => s.replace(/\s+/g, " ").trim()),
+      assert.deepEqual((await rail.allInnerTexts()).map((s) => s.replace(/\s+/g, " ").trim().trim()),
         [`${w.allTab} 31/31`, `${w.routes} 1/1`, "OpenAI 6/6", "OpenRouter 24/24"]);
       assert.equal(await rail.first().getAttribute("aria-pressed"), "true");
       await rail.nth(3).click();

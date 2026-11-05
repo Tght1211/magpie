@@ -68,7 +68,11 @@ const isOpen = (page, r = codex) => page.evaluate((r) => {
   const row = document.querySelector(r);
   return { open: row.classList.contains("expanded") && !!row.querySelector(":scope > .ag-exp"), aria: row.querySelector(":scope > .ag-link")?.getAttribute("aria-expanded") ?? null };
 }, r);
-const quiet = (page) => page.waitForTimeout(600); // the sheet slides
+// Wait for the sheet itself: a loaded renderer can advance animations much
+// slower than the host clock, so a 600 ms host sleep is not its completion.
+const quiet = (page) => page.waitForFunction(() => [...document.querySelectorAll(".ag-exp")].every((box) =>
+  box.getAnimations().every((animation) => animation.playState !== "running")));
+
 
 for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium", "webkit"])) {
   for (const lang of ["en", "zh", "zh-TW", "ja", "de"]) {

@@ -47,6 +47,7 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   await page.locator('#qpBody .v-account .pii').first().waitFor();
   await page.evaluate(()=>hideAccounts.set(false));
   await page.locator('#qpTabs [data-tab=trend]').click();
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   await page.locator('#qpBody [data-account="1"]').first().click();
   await page.locator('#qpBody [data-stage="1"]').click();
   await page.locator('#qpPace').fill('12');

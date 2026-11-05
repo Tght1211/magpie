@@ -122,7 +122,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await item.locator(".call-body pre").first().waitFor();
       assert.equal(await item.locator(".call-body").count(), 2, "bodies open, headers folded");
       const toggle = item.locator(".call-wire-toggle");
-      assert.equal(await toggle.innerText(), w.toggle);
+      assert.equal((await toggle.innerText()).trim(), w.toggle);
       assert.equal(await toggle.getAttribute("aria-expanded"), "false");
       await toggle.click();
       await item.locator(".call-wire-grid").waitFor();

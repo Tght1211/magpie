@@ -69,7 +69,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
     test(`${engine} ${lang}: every model hidden, the line stays to put them back`, async (t) => {
       const w = W[lang];
       const browser = await (engine === "webkit" ? webkit.launch() : chromium.launch({ channel: "chromium" }));
-      const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+      const page = await browser.newPage({ viewport: { width: 1000, height: 700 }, reducedMotion: "reduce" });
       page.setDefaultTimeout(5000);
       page.setDefaultNavigationTimeout(60000);
       const errors = [];
@@ -84,6 +84,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await browser.close();
       });
       await page.goto("http://magpie.test/");
+      await page.waitForLoadState("networkidle");
       const row = page.locator('.row.agent[data-id="dsh"]');
       await row.locator(".ag-link").click();
       const entry = row.locator(".ag-exp .ag-chips .ag-quiet");
@@ -126,7 +127,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.waitForTimeout(150);
       assert.deepEqual(fx.posts.at(-1), []);
       assert.equal(await hint.count(), 0);
-      assert.equal(await row.locator(".ag-chip").innerText().then((s) => s.replace(/\s+/g, " ")), "DeepSeek 3");
+      assert.equal(await row.locator(".ag-chip").innerText().then((s) => s.replace(/\s+/g, " ").trim()), "DeepSeek 3");
       await page.keyboard.press("Escape");
       await pop.waitFor({ state: "detached" });
       await page.waitForTimeout(300);

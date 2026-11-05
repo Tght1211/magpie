@@ -50,8 +50,21 @@ The model's conservation, reset/card rules and provider separation are checked
 against small exhaustive cases. Removing card eligibility makes the new
 eligibility regression fail. Race tests cover publication and cancellation.
 The new planner UI passes Chromium and WebKit in all five supported languages.
-Native, Linux and Windows vet/build checks passed before the final stale-read
-guard; deployment binaries must be rebuilt from the final commit.
+Native, Linux and Windows vet/build checks passed again at `1189f28c`,
+including the final stale-read guard and UI assets.
 
-The complete Go and GUI suites are still being reconciled with integration
-fixes. This record does not claim a clean full suite or a deployment.
+The complete Go suite finished with one failure: the CLI endpoint parity
+table omitted the new APIs. After fixing the table, the complete CLI package
+passed; all other packages passed the full run. The final stale-reading guard
+and cache lifecycle tests also passed with race detection.
+
+The complete GUI suite is still running and its failures are being diagnosed.
+This record does not claim a clean full GUI suite or a deployment.
+
+Browser fixture corrections wait for initial account reads before using rows,
+observe animation completion/progress instead of host-clock sleeps, ignore
+WebKit's outer text whitespace and include the quota-planner navigation item.
+The final account/model and reset-switch batch passed 40/40; the context-map
+and signed-out-account batch passed in both engines. Older failed attempts
+remain in the local logs. Full-suite failures outside these corrected batches
+remain a release blocker; no production binary has been replaced.

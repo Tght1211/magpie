@@ -83,6 +83,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.locator(".row.provider", { hasText: "Codex" }).first().click();
         const box = page.locator(".editor .signing.daemon");
         await box.waitFor();
+        await page.waitForFunction(() => loginUsage.codex?.at && !loginUsage.codex.loading);
         const text = await box.textContent();
         assert.match(text, /spent@example\.com/);
         if (lang === "en") assert.match(text, /Quit it and open it again/);
@@ -117,6 +118,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.locator(".row.provider", { hasText: "Codex" }).first().click();
         const box = page.locator(".editor .signing.daemon");
         await box.waitFor();
+        await page.waitForFunction(() => loginUsage.codex?.at && !loginUsage.codex.loading);
         const go = box.locator("button.primary");
         assert.equal((await go.textContent()).trim(), await page.evaluate((l) => (l === "en" ? "Restart" : I18N[l].Restart), lang));
         const ask = page.locator("dialog.action-confirm[open]");
@@ -149,6 +151,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator(".row.provider", { hasText: "Codex" }).first().click();
       const box = page.locator(".editor .signing.daemon");
       await box.waitFor();
+        await page.waitForFunction(() => loginUsage.codex?.at && !loginUsage.codex.loading);
       await box.locator("button.primary").click();
       await page.locator("dialog.action-confirm[open] button.primary").click();
       const said = page.locator(".editor .editor-error");

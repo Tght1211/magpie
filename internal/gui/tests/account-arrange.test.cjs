@@ -86,6 +86,9 @@ async function open(page, id) {
 }
 async function point(row) {
   await row.scrollIntoViewIfNeeded();
+  // Key actions appear on hover and consume the gap used for dragging.
+  // Measure that gap after hover, so pointerdown cannot hit Remove instead.
+  await row.hover();
   return row.evaluate(r => {
     const b = r.getBoundingClientRect(), gap = r.querySelector(".grow").getBoundingClientRect();
     return { x: gap.width > 8 ? gap.left + gap.width / 2 : b.right - 5, y: b.top + b.height / 2, bottom: b.bottom };

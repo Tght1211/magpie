@@ -49,7 +49,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const gatewayPaints = [];
       for (const scheme of ["light", "dark"]) {
         await page.emulateMedia({ colorScheme: scheme });
-        await page.waitForTimeout(200);
+        // Media changes and palette transitions finish on the renderer clock.
+        await page.evaluate(async () => {
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})));
+        });
         const { colors: c, elements: e } = await palette(page, gatewaySelectors);
         assert.equal(e.card.bg, c.card);
         assert.equal(e.card.border, c.line);
@@ -79,7 +83,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.locator("#modal .lib-confirm").waitFor();
       for (const scheme of ["light", "dark"]) {
         await page.emulateMedia({ colorScheme: scheme });
-        await page.waitForTimeout(200);
+        // Media changes and palette transitions finish on the renderer clock.
+        await page.evaluate(async () => {
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})));
+        });
         const { colors: c, elements: e } = await palette(page, {
           dialog: "#modal .dialog", message: "#modal .lib-confirm", confirm: "#modal .primary",
         });
@@ -110,7 +118,11 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.mouse.move(500, 20);
       for (const scheme of ["light", "dark"]) {
         await page.emulateMedia({ colorScheme: scheme });
-        await page.waitForTimeout(200);
+        // Media changes and palette transitions finish on the renderer clock.
+        await page.evaluate(async () => {
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})));
+        });
         const { colors: c, elements: e } = await palette(page, { card: "#lanList", text: "#lanList .row.pref:last-child .name",
           key: "#lanList .lan-url", copy: "#lanList .row.pref:last-child .copy" });
         assert.equal(e.card.bg, c.card);

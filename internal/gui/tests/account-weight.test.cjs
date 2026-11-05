@@ -79,8 +79,9 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       await page.goto("http://magpie.test/?view=providers");
       await page.locator(".row.provider", { hasText: "Claude Code" }).first().click();
       await page.locator('.editor .acc[data-account-id="off@example.com"]').waitFor();
+      await page.waitForFunction(() => loginUsage.claude?.at && !loginUsage.claude.loading);
       const chip = (id) => page.locator(`.editor .acc[data-account-id="${id}"] .key-weight`);
-      const scrolled = () => page.evaluate(() => [window.scrollY, ...[...document.querySelectorAll("*")].filter((e) => e.scrollTop > 0).map((e) => `${e.className}:${e.scrollTop}`)].join(" "));
+      const scrolled = () => page.evaluate(() => [window.scrollY, ...[...document.querySelectorAll("*")].filter((e) => e.scrollTop > 0).map((e) => `${e.tagName}:${e.scrollTop}`)].join(" "));
 
       // Smart: no weights shown
       assert.equal(await chip("max@example.com").isVisible(), false, `${at}: a weight under Smart`);

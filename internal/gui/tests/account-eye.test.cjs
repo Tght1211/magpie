@@ -290,6 +290,8 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         await page.route("**/*", serve(lang));
         await page.goto("http://magpie.test/?view=usage");
         await page.locator(".subscription-account .quota-alias").first().waitFor();
+        // The mock's initial Usage reads can replace the cached first cards.
+        await page.waitForLoadState("networkidle");
         const card = (id) => page.locator(".subscription-account", { has: page.locator(".quota-of", { hasText: id }) });
         assert.equal(await opacity(card(ME).locator(".acct-eye")), "none");
 
