@@ -110,3 +110,29 @@ Verified on the correction:
 Earlier full-suite limitations above remain disclosed; this correction does not
 claim a new full repository Go/GUI suite pass. It changes frontend assets only,
 with no settings migration, routing change or reset-card operation.
+
+### Corrected production deployment
+
+Deployed `0.1.2995-quota-dashboard.2` from `bdfec1e0` on 2026-11-06
+(Asia/Shanghai). Linux executable SHA-256:
+`765c53e1af6a1003b3d7bdb4acb146e13358d678ebc9c0a43e360c5d37477cb5`.
+
+The independent Linux preflight used an empty HOME as the service user and
+verified startup, embedded assets, member schema and authenticated access.
+Uploaded bytes matched the locally built hash. A backup of the prior executable,
+service configuration and consistent stopped-service data is retained at
+`/var/backups/magpie-custom/20261105T192013Z-quota-dashboard.2`.
+
+The switch verified unchanged configuration hashes, all 54 existing provider
+quota identities and the full pre-deploy usage-ledger prefix. Gateway and planner
+APIs were healthy. The backup/switch/check sequence took 9.66 seconds; this is
+not a measured request downtime. Rollback restores the old executable while
+retaining current data.
+
+Post-deployment Chromium/WebKit checks passed all four tabs at 1440 and 390 px,
+including actual automatic refresh, finite values, no page overflow and no browser
+errors. The member API returned 8 members, 4 accounts and 4 explicit bindings;
+these are observed state, not bindings created by this deployment. A subsequent
+trace snapshot observed 5 successfully completed calls, none failed and none in
+flight. Screenshots are privacy-masked; local evidence is under
+`/tmp/magpie-dashboard-live/` and `/tmp/magpie-parity-*.log`.
