@@ -2,11 +2,35 @@ package usage
 
 import (
 	"context"
+	"github.com/yetone/magpie/internal/provider"
 	"github.com/yetone/magpie/internal/quotaplan"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestPlanningRejectsRetainedAllowanceAfterFailedRefresh(t *testing.T) {
+	now := time.Now()
+	recent, old, future := now.Add(-time.Minute), now.Add(-3*time.Hour), now.Add(time.Minute)
+	for _, tc := range []struct {
+		name string
+		q    provider.SubscriptionQuota
+		want bool
+	}{
+		{"fresh", provider.SubscriptionQuota{ReadAt: &recent}, true},
+		{"retained without error", provider.SubscriptionQuota{ReadAt: &recent, AsOf: &recent}, false},
+		{"error", provider.SubscriptionQuota{ReadAt: &recent, Error: "unavailable"}, false},
+		{"missing time", provider.SubscriptionQuota{}, false},
+		{"expired", provider.SubscriptionQuota{ReadAt: &old}, false},
+		{"future", provider.SubscriptionQuota{ReadAt: &future}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := planningReadingFresh(tc.q, now); got != tc.want {
+				t.Fatalf("reading fresh = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestHarvestPlanPublicationAndExpiry(t *testing.T) {
 	now := time.Now()

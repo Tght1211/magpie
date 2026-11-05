@@ -165,3 +165,8 @@
 .qp [data-demo-field] { width:82px; }
 .qp .v-pool-table td > small { display:block; color:var(--muted); }
 .qp .v-formula { margin:16px 0; padding:14px; border-radius:8px; background:var(--card-2); font-family:var(--font-mono,monospace); font-size:12px; line-height:2; overflow-wrap:anywhere; }
+.qp input[type="number"] { height:27px; padding:0 9px; border-radius:7px; border:1px solid var(--line); background:var(--card); color:var(--fg); font:inherit; font-variant-numeric:tabular-nums; min-width:0; appearance:textfield; }
+.qp input[type="number"]::-webkit-inner-spin-button,.qp input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+.qp input[type="number"]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.qp input[type="checkbox"] { accent-color:var(--accent); }
+.qp .v-card-expiry { display:flex; gap:8px; align-items:center; margin:6px 0; }

@@ -20,7 +20,8 @@ and a changed model/cache mix can bias the estimate. Unknown values stay
 unknown, not zero. CNY display follows the application's existing FX setting.
 
 The production plan includes enabled Codex/Claude accounts with recent
-readings and calibration. Paid time ending within the horizon without a
+readings and calibration. Retained readings marked `AsOf` after a failed or
+deferred refresh are display-only and excluded from new plans. Paid time ending within the horizon without a
 confirmed automatic renewal is excluded conservatively. The coverage count
 names incomplete pools. Demand requires complete, priced local history over
 24 hours; no forecast is claimed when it is unknown. Held or short-window
@@ -55,7 +56,7 @@ means all these discrete schedules were checked, not continuous global
 optimality. `bounded-feasible` is the best complete feasible solution found;
 `budget-exhausted` means none finished and publishes no target. Larger pools
 (maximum 16 calibrated accounts or 32 cards) are unsupported and yield unknown
-instead of fabricated forecasts. Rebuilding from each new snapshot handles
+(`unsupported-input`) instead of fabricated forecasts. Rebuilding from each new snapshot handles
 new cards and unexpected official resets; historical measurements are never
 rewritten as forecasts.
 

@@ -59,7 +59,7 @@ func QuotaPlan(now time.Time) PoolPlan {
 		if q.Until != nil && q.Renew != "auto" && q.Until.Before(now.Add(72*time.Hour)) {
 			continue
 		}
-		if q.Error != "" || q.ReadAt == nil || now.Sub(*q.ReadAt) > 2*time.Hour || q.ReadAt.After(now) {
+		if !planningReadingFresh(q, now) {
 			continue
 		}
 		var w *provider.QuotaWindow
@@ -123,11 +123,22 @@ func QuotaPlan(now time.Time) PoolPlan {
 	}
 	out.DemandKnown = out.Coverage == len(out.Input.Accounts) && out.Coverage > 0
 	if out.DemandKnown {
-		out.Result, _ = quotaplan.Solve(out.Input, 400*time.Millisecond)
+		var err error
+		out.Result, err = quotaplan.Solve(out.Input, 400*time.Millisecond)
+		if err != nil {
+			out.Result.Status = "unsupported-input"
+		}
 	} else {
 		out.Result.Status = "insufficient-data"
 	}
 	return out
+}
+
+// A failed/deferred refresh can retain recent windows without an Error.
+// Those are useful to display but must not authorize a new inventory plan.
+func planningReadingFresh(q provider.SubscriptionQuota, now time.Time) bool {
+	return q.Error == "" && q.AsOf == nil && q.ReadAt != nil &&
+		!q.ReadAt.After(now) && now.Sub(*q.ReadAt) <= 2*time.Hour
 }
 func poolCalibration(samples []PoolSample, read, now time.Time) (float64, float64) {
 	good := []PoolSample{}
@@ -166,7 +177,7 @@ func init() { provider.HarvestRanks = harvestRanks; provider.HarvestCardPlan = h
 func harvestCardPlan(user string, reset, expiry, now time.Time) (bool, bool) {
 	harvestPlanCache.Lock()
 	defer harvestPlanCache.Unlock()
-	if harvestPlanCache.path != provider.Path() || now.Before(harvestPlanCache.at) || now.Sub(harvestPlanCache.at) > 2*time.Minute || now.Before(harvestPlanCache.at) {
+	if harvestPlanCache.path != provider.Path() || now.Before(harvestPlanCache.at) || now.Sub(harvestPlanCache.at) > 2*time.Minute {
 		return false, false
 	}
 	p, ok := harvestPlanCache.cards[accountID("codex", user)]

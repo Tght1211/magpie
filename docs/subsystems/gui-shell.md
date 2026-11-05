@@ -1023,40 +1023,25 @@ restoring visibility does not pin an unconfigured agent into the main list.
 See `agent-bulk-visibility.test.cjs` for persistence, partial selection, failed
 saves, narrow layouts and all five languages in Chromium and WebKit.
 
-## Quota planning preview
+## Quota planning (custom build)
 
-The Usage plugin also contributes `quota-planner`, with three chart tabs:
-allowance deadlines, consumption scenarios, and gateway-key usage. Its
-`planner-model.js`, `planner-view.js`, `planner.js` and scoped `planner.css`
-use the shell lifecycle and translations. It reads the existing authenticated
-`/api/usage/quotas`, `/api/usage/quotas/history?days=30` and
-`/api/usage?period=30d&tz=…` APIs. No settings, routing state or reset cards are
-written. Hiding the page stops its minute timer and invalidates pending reads;
-late results cannot replace a later visit. Failed reads are shown as unknown.
+The Usage plugin contributes `quota-planner`, with allowance deadlines,
+consumption scenarios, gateway-key usage and an interactive explanation.
+Its scoped modules use the shell lifecycle, translations and privacy masking.
+The authenticated APIs, calibrated money estimates, solver boundaries and
+routing integration are described in [quota planning](quota-planning.md).
+Hiding the page stops its minute timer and invalidates pending reads; late
+results cannot replace a later visit. Failed reads are shown as unknown.
 
-Each Codex account keeps its own weekly percentage, timestamp and deadline.
-The next usable deadline orders suggestions for new work; this is a preview,
-not a mathematically optimal scheduler, and it does not change session affinity.
-A natural reset before a card expiry is preserved as a separate future window.
-The 100% refill, 80% card threshold and one-hour review margin are labelled
-scenario assumptions, not execution rules. A passed reset needs a new reading.
-History uses the provider's cycle-boundary rules, including clock jitter, so
-refills are not counted as consumption. Future lines stop at zero.
-
-Key charts use the existing gateway summary's final calls (retries are not
-extra tasks), with a pool-wide daily series and per-key totals. Cache input
-share excludes tokens with unknown cache accounting, as `usage.Totals` does.
-Single-account, pool-capacity and scheduling counterfactuals remain uncomputed;
+Key charts use the gateway summary's final calls (retries are not extra
+tasks), with a pool-wide daily series and per-key totals. Cache input share
+excludes tokens with unknown cache accounting. Single-account scheduling
+counterfactuals remain uncomputed without reliable workload assumptions;
 no inferred savings or unsent demand are presented as observed benefits.
 
-`quota-planner-model.test.cjs` checks deadlines, unknown/held accounts, cycles
-and cache accounting. `quota-planner.test.cjs` exercises the real shell and
-fixtures in Chromium and WebKit, five languages, narrow layouts, live sliders,
-failed reads, navigation races and escaped data. The preview never loads the
-private prototype snapshot.
-
-The custom Usage plugin's quota planning page and provider routing preview
-share [quota planning](quota-planning.md)'s authenticated APIs. A separate
-fictional-account explanation uses the pure simulation endpoint; changing its
-inputs never modifies accounts, routing settings or reset cards. The provider
-editor's harvest choice remains staged until its ordinary Save action.
+The fictional-account explanation uses the pure simulation endpoint;
+changing its inputs never modifies accounts or spends reset cards. The
+provider editor's harvest choice remains staged until its ordinary Save.
+`quota-planner-model.test.cjs` checks deadline and history semantics;
+`quota-planner.test.cjs` exercises the shell in both browser engines and
+five languages, including masking, narrow layouts and stale navigation.
