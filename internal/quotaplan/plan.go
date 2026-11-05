@@ -28,6 +28,8 @@ type Account struct {
 	Reset       int64   `json:"reset"`
 	PeriodHours float64 `json:"periodHours"`
 	Auto        bool    `json:"auto"`
+	Rescue      bool    `json:"rescue,omitempty"`
+	RescueAfter int64   `json:"rescueAfter,omitempty"`
 	LeadMinutes int     `json:"leadMinutes"`
 	Blocked     bool    `json:"blocked"`
 	Cards       []Card  `json:"cards"`
@@ -78,6 +80,7 @@ type epoch struct {
 type decision struct {
 	account, card int
 	at            int64
+	rescue        bool
 }
 
 func finite(x float64) bool { return !math.IsNaN(x) && !math.IsInf(x, 0) }
@@ -136,16 +139,51 @@ func Solve(in Input, budget time.Duration) (Result, error) {
 				at = a.Reset + (c.Expiry-a.Reset)/2
 			}
 			if at < end {
-				ds = append(ds, decision{i, j, at})
+				ds = append(ds, decision{i, j, at, false})
+			}
+		}
+	}
+	stop := time.Now().Add(budget)
+	// Rescue options are taken from actual stockout boundaries in the no-card
+	// flow. They are bounded candidates, not a continuous-time optimum.
+	rescueOptions := false
+	if base, ok, complete := scenario(in, nil, 0, end, stop); ok && complete {
+		for i, a := range in.Accounts {
+			if !a.Rescue || a.Blocked {
+				continue
+			}
+			for j, c := range a.Cards {
+				for k, p := range base.Points {
+					if p.At >= end || p.At >= c.Expiry || p.At < a.RescueAfter || k+1 < len(base.Points) && base.Points[k+1].At == p.At {
+						continue
+					}
+					demand := in.Demand
+					if len(in.Demands) > 0 {
+						demand = in.Demands[a.Group]
+					}
+					if demand <= 0 {
+						continue
+					}
+					left := 0.0
+					for z, b := range in.Accounts {
+						if !b.Blocked && (len(in.Demands) == 0 || b.Group == a.Group) {
+							left += p.Values[z]
+						}
+					}
+					if left <= eps {
+						ds = append(ds, decision{i, j, p.At, true})
+						rescueOptions = true
+						break
+					}
+				}
 			}
 		}
 	}
 	sort.SliceStable(ds, func(i, j int) bool { return ds[i].at < ds[j].at })
-	limited := len(ds) > 8
-	if limited {
+	limited := len(ds) > 8 || rescueOptions
+	if len(ds) > 8 {
 		ds = ds[:8]
 	}
-	stop := time.Now().Add(budget)
 	best := Result{}
 	have := false
 	n := 0
@@ -165,7 +203,7 @@ func Solve(in Input, budget time.Duration) (Result, error) {
 		}
 		loss := r.Waste + r.ExpiredCards
 		old := best.Waste + best.ExpiredCards
-		if !have || r.Spent > best.Spent+eps || math.Abs(r.Spent-best.Spent) < eps && (loss < old-eps || math.Abs(loss-old) < eps && r.Remaining > best.Remaining+eps) {
+		if !have || r.Spent > best.Spent+eps || math.Abs(r.Spent-best.Spent) < eps && (loss < old-eps || math.Abs(loss-old) < eps && (r.Remaining > best.Remaining+eps || math.Abs(r.Remaining-best.Remaining) < eps && serviceDelay(r, in.Now) < serviceDelay(best, in.Now))) {
 			best = r
 			have = true
 		}
@@ -183,6 +221,16 @@ func Solve(in Input, budget time.Duration) (Result, error) {
 	}
 	return best, nil
 }
+
+// With equal served work, waste and terminal balance, serve that work sooner.
+func serviceDelay(r Result, now int64) float64 {
+	value := 0.0
+	for _, a := range r.Allocations {
+		value += a.Amount * float64(a.From-now) / float64(Hour)
+	}
+	return value
+}
+
 func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Result, bool, bool) {
 	var es []epoch
 	times := []int64{in.Now, end}
@@ -194,11 +242,15 @@ func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Res
 		chosen := []decision{}
 		for k, d := range ds {
 			if d.account == i && mask&(1<<k) != 0 {
+				if spentCards[[2]int{i, d.card}] {
+					return Result{}, false, true
+				}
 				chosen = append(chosen, d)
 				spentCards[[2]int{i, d.card}] = true
 			}
 		}
 		start, reset, amount, kind := in.Now, a.Reset, a.Full*a.Left/100, "initial"
+		rescueAfter := a.RescueAfter
 		for start < end {
 			next := min(reset, end)
 			card := -1
@@ -212,6 +264,12 @@ func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Res
 			minimum := 0.0
 			if card >= 0 {
 				minimum = math.Max(0, amount-.8*a.Full)
+				if chosen[card].rescue {
+					if next < rescueAfter {
+						return Result{}, false, true
+					}
+					minimum = amount
+				}
 			}
 			if next == start && minimum > eps {
 				return Result{}, false, true
@@ -226,6 +284,10 @@ func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Res
 			kind = "reset"
 			if card >= 0 {
 				kind = "card"
+				if chosen[card].rescue {
+					kind = "rescue"
+					rescueAfter = reset
+				}
 				chosen = append(chosen[:card], chosen[card+1:]...)
 				reset = start + int64(a.PeriodHours*float64(Hour))
 			} else {
@@ -339,17 +401,30 @@ func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Res
 		r.Points = append(r.Points, p)
 	}
 	snap(in.Now)
+	valid := true
 	refill := func(t int64) {
-		for _, e := range es {
-			if e.kind == "initial" || e.start != t {
-				continue
+		for phase := 0; phase < 2; phase++ {
+			for _, e := range es {
+				if (e.kind == "reset") != (phase == 0) {
+					continue
+				}
+				if e.kind == "initial" || e.start != t {
+					continue
+				}
+				a := in.Accounts[e.account]
+				if e.kind == "rescue" {
+					for i, b := range in.Accounts {
+						if !b.Blocked && (len(in.Demands) == 0 || b.Group == a.Group) && balances[i] > eps {
+							valid = false
+						}
+					}
+				}
+				gain := math.Max(0, a.Full-balances[e.account])
+				r.Waste += balances[e.account]
+				balances[e.account] = a.Full
+				r.Events = append(r.Events, Event{t, a.ID, e.kind, gain})
+				snap(t)
 			}
-			a := in.Accounts[e.account]
-			gain := math.Max(0, a.Full-balances[e.account])
-			r.Waste += balances[e.account]
-			balances[e.account] = a.Full
-			r.Events = append(r.Events, Event{t, a.ID, e.kind, gain})
-			snap(t)
 		}
 	}
 	refill(in.Now)
@@ -359,6 +434,9 @@ func scenario(in Input, ds []decision, mask int, end int64, stop time.Time) (Res
 		}
 		snap(times[j+1])
 		refill(times[j+1])
+	}
+	if !valid {
+		return Result{}, false, true
 	}
 	r.Remaining = r.Points[len(r.Points)-1].Total
 	sort.SliceStable(r.Allocations, func(i, j int) bool { return r.Allocations[i].From < r.Allocations[j].From })

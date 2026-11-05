@@ -185,6 +185,17 @@ const quotaPlannerModel = (() => {
     const forecast=simulate(aa,policy,rate ?? 0);
     return {accounts:aa,total,full,required,observed,hourly,forecast,rate,coverage:aa.length,count:accounts.length,now};
   }
-  return { hour, time, share, accounts, windows, observed, ranked, cache, newCycle, calibrate, enrich, deadline, simulate, pool };
+  // A rolling, fully priced hour is a measured rate; a scenario input is not.
+  function pace(p, now = Date.now()) {
+    const last = p.hourly.at(-1), fresh = last && last.at <= now + 60000 && now - last.at <= 90000;
+    const complete = p.coverage > 0 && p.coverage === p.count;
+    const actual = fresh && complete ? last.cost : null;
+    const target = complete && number(p.required) && p.required > 0 ? p.required : null;
+    const ratio = actual !== null && target !== null ? actual / target : null;
+    const status = ratio === null ? 'unknown' : ratio < .8 ? 'slow' : ratio > 1.2 ? 'fast' : 'steady';
+    return {actual, target, ratio, status, at:last?.at, delta:ratio === null ? null : actual-target,
+      runway:actual > 0 ? p.total / actual : null};
+  }
+  return { hour, time, share, accounts, windows, observed, ranked, cache, newCycle, calibrate, enrich, deadline, simulate, pool, pace };
 })();
 if (typeof module !== 'undefined') module.exports = quotaPlannerModel;

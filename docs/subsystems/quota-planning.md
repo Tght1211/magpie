@@ -106,5 +106,64 @@ masking, narrow layouts, card addition, official reset and dispatch controls.
 
 Planner cards use the shared application palette and controls with 12 px
 panel spacing, compact metric/table padding, and a bounded pool-chart height.
-The chart retains its minimum width and internal horizontal scroll on phones;
-page-level overflow is checked in both engines and all supported languages.
+The time explorer uses a narrower SVG viewBox and fewer date labels on phones;
+older account charts retain internal horizontal scrolling. Page-level overflow
+is checked in both engines and all supported languages.
+
+### Live pace, emergency scenarios and saved history
+
+The live pace card reads the complete, priced last 60 minutes every 15 seconds.
+It compares that measured rate to the current deadline target (80–120% is the
+on-pace band). Scenario inputs never change the measured number. Values animate
+only when a new reading changes them; countdowns and sample age tick each second.
+Readings older than 90 seconds become unknown, including when a request hangs.
+Input focus and active timeline drags defer redraws; timeline keyboard focus
+survives refreshed readings. Leaving/hiding the page stops its timers. Reduced
+motion disables interpolation and pulse animation.
+
+Emergency-enabled Codex accounts expose their existing emergency cooldown to
+planning. The bounded solver adds no-card stockout candidates before card expiry;
+it validates empty compatible usable inventory and shifts the natural reset after
+use. These candidates are heuristic and report `bounded-feasible`, even when
+all enumerated schedules complete. They do not enumerate every sequential rescue
+schedule. The actual emergency executor, opt-in flags, live vendor recheck and
+routing/concurrency/session guards are unchanged. A preview never spends a card.
+
+The draggable time explorer covers one day to three years per window and can move
+up to nine years ahead. Its event-driven conditional scenario consumes the earliest
+refill deadline within each provider group and advances directly to depletion,
+refill, card eligibility, expiry or cooldown events. The three stacked colors are
+initial inventory, natural-refill inventory and card-refill inventory. Emergency
+on/off comparison respects enabled accounts, card expiry, old-window cooldown and
+empty compatible inventory. Claude cannot spend cards. This is an explanatory
+long-range policy simulation, **not** the 72-hour flow optimizer or a routing
+change. Continued subscriptions, fixed calibration/demand and known finite cards
+are explicit assumptions. Held accounts remain unavailable conservatively. New
+readings rebuild only future scenarios. Aggregation bounds plotted data to 120
+consumption bins; event details summarize later refills.
+
+`KeepQuotaPlan` now also collects calibrated pool observations every five minutes
+while the gateway runs, regardless of the selected routing policy. It records only
+complete calibrated account sets. The first feasible forecast per scope/hour is
+saved in private `quota-plans/YYYY-MM.jsonl` beside `usage.jsonl`. Scope is a hash
+of sorted account identities; the journal contains aggregate values and times,
+not emails, keys or request contents. A held cross-process lock, append+fsync and
+strict reader prevent a damaged/partial journal from being treated as empty or
+rewritten. There is no automatic retention cutoff for this archive. Existing raw
+quota history still retains 45 days; previously purged readings cannot be restored.
+
+Authenticated `GET /api/usage/quota-plan?history=1&from=<ms>&to=<ms>` returns at
+most 120 usage bins, observations and saved baseline data. It performs no writes.
+Actual usage is drawn from retained local ledger records for the current calibrated
+account set. Unpriced, incomplete and future intervals remain unknown. A comparison
+stitches forecasts at their original issue times, using only already-saved
+information for each segment. Every segment must be covered. Changing the account set prevents mixing scopes. Missing predictions
+are never backfilled; large historical bins aggregate covered rolling forecasts.
+Archive read failures return an error, not a fabricated empty history. The earliest
+retained own-ledger record bounds backward exploration. API-list-price values are
+estimates of consumed allowance, never actual vendor charges.
+
+Weekend shading covers local Saturday midnight through Monday midnight in both
+explorer charts. Boundaries follow browser calendar dates, including DST; short
+views label wide bands and long views reduce their opacity. Shading changes no
+consumption assumptions or routing priorities.

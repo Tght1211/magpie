@@ -178,7 +178,7 @@ const quotaPlannerView = (() => {
     b+=draw(past,false)+draw(future,true);
     b+=`<polyline points="${future.map(pt=>`${x(pt.at)},${y(pt.total)}`).join(' ')}" fill="none" stroke="var(--fg-2)" stroke-width="2" stroke-dasharray="6 4"/>`;
     b+=`<line x1="${x(now)}" x2="${x(now)}" y1="35" y2="265" stroke="var(--muted)" stroke-dasharray="3 4"/><text x="${x(now)+5}" y="28">${tr('Now')}</text>`;
-    for(const e of p.forecast.events) b+=`<circle cx="${x(e.at)}" cy="275" r="4" fill="${e.kind==='card'?'var(--amber)':'var(--fg-2)'}"><title>${stamp(e.at)} · ${name(p.accounts.find(a=>a.id===e.id))} · ${tr(e.kind==='card'?'Conditional card refill':'Natural reset')} +${money(e.gain)}</title></circle>`;
+    for(const e of p.forecast.events) b+=`<circle cx="${x(e.at)}" cy="275" r="4" fill="${e.kind==='card'?'var(--amber)':'var(--fg-2)'}"><title>${stamp(e.at)} · ${name(p.accounts.find(a=>a.id===e.id))} · ${tr(e.kind==='rescue'?'Emergency card refill':e.kind==='card'?'Conditional card refill':'Natural reset')} +${money(e.gain)}</title></circle>`;
     for(let i=0;i<=4;i++){const at=start+(end-start)*i/4;b+=`<text x="${x(at)}" y="302" text-anchor="${i===0?'start':i===4?'end':'middle'}">${stamp(at)}</text>`;}
     return `<div class="v-scroll">${svg('Pool allowance forecast',b,325,'v-pool-chart')}</div><div class="v-legend">${p.accounts.map(a=>`<span>${dot(a)}${name(a)}</span>`).join('')}</div>`;
   }
@@ -202,6 +202,68 @@ const quotaPlannerView = (() => {
     }).join('')}</tbody></table></div><p class="v-caption">${tr('Same demand for every scenario; 30-minute sessions. Token rate is an average usage pace, not model generation speed. Model limits, cache changes and parallel sessions can change results.')}</p>`;
   }
 
+  const liveFormat = (value, kind) => kind === 'ratio' ? n(value) + '×' : money(value) + (kind === 'rate' ? ' / h' : '');
+  const liveNumber = (key, value, kind = 'money') => `<span data-qp-number="${key}" data-qp-value="${Number.isFinite(value) ? value : ''}" data-qp-kind="${kind}">${Number.isFinite(value) ? liveFormat(value, kind) : '—'}</span>`;
+  function pacePanel(p, s) {
+    const v = M.pace(p), next = p.forecast.events?.find(e => e.at > Date.now());
+    const words = {fast:'Using faster than target',slow:'Using slower than target',steady:'On pace',unknown:'Pace needs fresh data'};
+    const advice = {fast:'Slow down to stretch the current allowance.',slow:'There is room to use more before the next deadline.',steady:'Consumption is close to the recommended pace.',unknown:'A complete recent hour is needed for this comparison.'};
+    return `<section class="v-panel v-live-pace" data-pace-state="${v.status}" data-pace-until="${v.at+90000}"><div class="v-panel-head"><h2>${tr('Consumption pace')}</h2><span class="v-pace-badge">${tr(words[v.status])}</span></div>
+      <div class="v-pace-summary"><div><small>${tr('Measured · last 60 minutes')}</small><b>${liveNumber('pace-actual',v.actual,'rate')}</b></div><span class="v-pace-versus">/</span><div><small>${tr('Recommended pace')}</small><b>${liveNumber('pace-target',v.target,'rate')}</b></div><strong>${liveNumber('pace-ratio',v.ratio,'ratio')}</strong></div>
+      <div class="v-pace-gauge" role="img" aria-label="${tr(words[v.status])}"><span></span><span></span><span></span>${v.ratio !== null ? `<i style="left:${Math.min(98,Math.max(2,v.ratio*50))}%"></i>` : ''}</div>
+      <div class="v-pace-labels"><span>${tr('Slower')}</span><span>${tr('Target band · ±20%')}</span><span>${tr('Faster pace')}</span></div>
+      <p class="v-pace-advice">${tr(advice[v.status])}${v.delta !== null ? ` <b>${tr(v.delta > 0 ? '{amount} / h above target' : '{amount} / h below target',{amount:ledMoney(Math.abs(v.delta))})}</b>` : ''}</p>
+      <div class="v-pace-footer"><span>${tr('Current balance runway · excludes refills')} <b>${v.runway === null ? '—' : tr('{hours} h',{hours:n(v.runway)})}</b></span>${next ? `<span>${tr(next.kind==='rescue'?'Emergency card refill':next.kind==='card'?'Conditional card refill':'Next refill')} <b data-qp-countdown="${next.at}"></b></span>` : ''}</div>
+      <p class="v-caption">${tr('Completed requests only. Live pace is independent of the scenario demand below.')} ${v.at?`<span data-qp-age="${v.at}"></span>`:''}</p></section>`;
+  }
+  function explorer(s) {
+    const ex=s.explorer;if(!ex)return '';
+    const {from,to,span}=quotaExplorer.range(ex), now=Date.now(), input=optimization(s)?.input;
+    const canProject=optimization(s)?.demandKnown&&input?.accounts?.length;
+    const future=canProject&&to>input.now?quotaExplorer.project(input,to,ex.rescue):null;
+    const without=future&&ex.rescue?quotaExplorer.project(input,to,false):null;
+    const data=ex.error?null:ex.data, bins=data?.bins||[], observed=data?.observations||[];
+    const compact=window.innerWidth<=650, width=compact?400:1000;
+    const x=at=>16+(at-from)/span*(width-32);
+    const chartSVG=(label,body,height)=>svg(label,body,height,'v-explorer-svg').replace('viewBox="0 0 1000','viewBox="0 0 '+width);
+    const date=at=>new Intl.DateTimeFormat(document.documentElement.lang||'en',{year:'numeric',month:'short',day:'numeric',...(!compact&&span<=7*M.hour*24?{hour:'2-digit',minute:'2-digit'}:{})}).format(at);
+    const localDate=new Date(from-new Date(from).getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const sample=pts=>pts.filter((p,i)=>p.at>=from&&p.at<=to&&(pts.length<800||i%Math.ceil(pts.length/600)===0||i===pts.length-1));
+    const ps=sample(future?.points||[]), baseline=sample(data?.forecasts?.[0]?.points||[]);
+    const max=Math.max(1,...ps.map(p=>p.total),...observed.map(p=>p.total),...baseline.map(p=>p.total)),y=v=>190-v/max*148;
+    const weekendRanges=quotaExplorer.weekendRanges(from,to);
+    const weekendBands=(height)=>weekendRanges.map(w=>`<rect data-qp-weekend x="${x(w.from)}" y="0" width="${Math.max(.25,x(w.to)-x(w.from))}" height="${height}" fill="var(--c4)" opacity="${span>60*86400000?'.045':'.11'}"><title>${tr('Weekend')} · ${esc(date(w.from))} → ${esc(date(w.to))}</title></rect>${x(w.to)-x(w.from)>65?`<text x="${(x(w.from)+x(w.to))/2}" y="${height-6}" text-anchor="middle" class="v-weekend-label">${tr('Weekend')}</text>`:''}`).join('');
+    let chart=weekendBands(208);
+    for(let i=0;i<3;i++)if(ps.length){const sum=(p,n)=>p.parts.slice(0,n).reduce((v,w)=>v+w,0);chart+=`<path d="${ps.map((p,j)=>`${j?'L':'M'}${x(p.at)},${y(sum(p,i+1))}`).join(' ')} ${ps.slice().reverse().map(p=>`L${x(p.at)},${y(sum(p,i))}`).join(' ')}Z" fill="var(--c${i+1})" opacity=".38"/>`;}
+    // Never bridge observation outages; a missing reading is not a flat balance.
+    let prev=null;for(const p of observed){chart+=`<path d="${prev&&p.at-prev.at<=Math.max(15*60000,span/100)?`M${x(prev.at)},${y(prev.total)}L`:'M'}${x(p.at)},${y(p.total)}" fill="none" stroke="var(--fg)" stroke-width="2.5"/><circle cx="${x(p.at)}" cy="${y(p.total)}" r="2" fill="var(--fg)"><title>${esc(date(p.at))} · ${money(p.total)}</title></circle>`;prev=p;}
+    if(baseline.length)chart+=`<polyline points="${baseline.map(p=>`${x(p.at)},${y(p.total)}`).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="2" stroke-dasharray="5 4"/>`;
+    if(from<=now&&to>=now)chart+=`<line x1="${x(now)}" x2="${x(now)}" y1="24" y2="205" stroke="var(--fg)" stroke-dasharray="3 4"/><text x="${Math.min(width-50,x(now)+5)}" y="40">${tr('Now')}</text>`;
+    chart+=`<text x="16" y="24">${tr('Estimated pool remaining')} · ${money(max)}</text>`;
+    const ticks=compact?1:3;for(let i=0;i<=ticks;i++){const at=from+span*i/ticks;chart+=`<text x="${x(at)}" y="228" text-anchor="${i===0?'start':i===ticks?'end':'middle'}">${esc(date(at))}</text>`;}
+    const uses=future?.uses||[], count=120, step=span/count;
+    const projected=Array.from({length:count},(_,i)=>{const f=from+i*step,t=f+step;let amount=0;for(const u of uses){const overlap=Math.min(t,u.to)-Math.max(f,u.from);if(overlap>0)amount+=u.amount*overlap/(u.to-u.from);}return {from:f,to:t,amount};});
+    const peak=Math.max(.01,...bins.map(b=>b.actual),...bins.map(b=>b.predicted||0),...projected.map(b=>b.amount)),cy=v=>120-v/peak*85;
+    let rate=weekendBands(128)+`<text x="16" y="20">${tr('Consumption in each interval')} · ${money(peak)}</text>`;
+    for(const b of bins){const width=Math.max(1,x(b.to)-x(b.from)-1);if(b.known)rate+=`<rect x="${x(b.from)}" y="${cy(b.actual)}" width="${width}" height="${120-cy(b.actual)}" fill="var(--c1)"><title>${esc(date(b.from))} → ${esc(date(b.to))} · ${tr('Measured usage')} ${money(b.actual)} · ${tr('Saved forecast')} ${money(b.predicted)}</title></rect>`;if(b.predicted!==null)rate+=`<line x1="${x(b.from)}" x2="${x(b.to)}" y1="${cy(b.predicted)}" y2="${cy(b.predicted)}" stroke="var(--amber)" stroke-width="2.5"/>`;}
+    for(const b of projected)if(b.to>now&&b.amount>0)rate+=`<rect x="${x(b.from)}" y="${cy(b.amount)}" width="${Math.max(1,x(b.to)-x(b.from)-1)}" height="${120-cy(b.amount)}" fill="var(--c1)" opacity=".25"><title>${esc(date(b.from))} · ${tr('Scenario')} ${money(b.amount)}</title></rect>`;
+    const events=(future?.events||[]).filter(e=>e.at>=from&&e.at<=to),rescues=(future?.events||[]).filter(e=>e.kind==='rescue');
+    const first=rescues[0], difference=without?future.spent-without.spent:null;
+    const matched=bins.filter(b=>b.known&&b.predicted!==null),actual=matched.reduce((v,b)=>v+b.actual,0),predicted=matched.reduce((v,b)=>v+b.predicted,0);
+    const legend=[['var(--c1)','Current inventory'],['var(--c2)','Natural refill inventory'],['var(--c3)','Card refill inventory'],['var(--fg)','Recorded balance'],['var(--amber)','Saved forecast'],['var(--c4)','Weekend']].map(([c,k])=>`<span><i class="v-dot" style="background:${c}"></i>${tr(k)}</span>`).join('');
+    return panel('Allowance time explorer',`<div class="v-explorer-tools"><div class="segs">${quotaExplorer.scales.map(v=>`<button class="opt ${ex.scale===v.id?'on':''}" data-qp-scale="${v.id}">${tr(v.key)}</button>`).join('')}</div><div><button class="text" data-qp-move="-1" aria-label="${tr('Earlier window')}">←</button><input type="date" id="qpDate" aria-label="${tr('Start date')}" value="${localDate}"><button class="text" data-qp-move="1" aria-label="${tr('Later')}">→</button><button class="text" data-qp-move="now">${tr('Now')}</button></div></div>
+      <div class="v-legend">${legend}</div><div class="v-explorer-chart" data-qp-explore tabindex="0" role="group" aria-label="${tr('Drag to explore time; arrow keys move the window.')}">${chartSVG('Pool allowance forecast',chart,245)}${chartSVG('Forecast versus actual consumption',rate,135)}</div>
+      <p class="v-caption">${tr('Solid bars: actual use · pale bars: future scenario · orange: saved prediction')}</p><div class="v-pace-footer"><span>${tr('Drag to explore time; arrow keys move the window.')}</span><span>${tr('Time per interval')} · ${n(step/M.hour)} h</span></div>
+      ${ex.busy?`<p role="status" class="v-caption">${tr('Loading…')}</p>`:ex.error?empty('History could not be read. Refresh to try again.'):!observed.length?`<p class="v-caption">${tr('No saved balance observations in this window.')}</p>`:''}
+      <div class="v-metrics">${metric('Actual · comparable intervals',matched.length?money(actual):'—')}${metric('Prediction · comparable intervals',matched.length?money(predicted):'—')}${metric('Actual minus prediction',matched.length?money(actual-predicted):'—')}</div>
+      <p class="v-caption">${tr('Only complete intervals for the same account set are compared. Missing predictions stay blank; they are never reconstructed after the fact.')}</p>
+      <div class="v-rescue"><div class="v-panel-head"><h2>${tr('Emergency refill scenario')}</h2><button class="text" data-qp-rescue="toggle" aria-pressed="${ex.rescue}">${tr(ex.rescue?'Include enabled emergency cards':'Exclude emergency cards')}</button></div><div class="v-metrics">${metric('Emergency cards used',future?n(rescues.length):'—')}${metric('Emergency allowance added',future?money(rescues.reduce((v,e)=>v+e.gain,0)):'—')}${metric('Extra served versus waiting',money(difference))}</div>
+      ${first?`<p class="v-caption">${stamp(first.at)} · ${name(s.accounts.find(a=>a.id===first.id))} · +${money(first.gain)} · ${tr('Natural reset moves')} ${stamp(first.old)} → ${stamp(first.next)}</p>`:''}
+      <p class="v-caption">${tr('Simulation from now to the window end. No card is spent here. Only enabled emergency resets are included; compatible usable inventory must run out first.')}</p></div>
+      <div class="v-event-strip">${events.slice(0,8).map(e=>`<div><small>${esc(date(e.at))}</small><b>${tr(e.kind==='rescue'?'Emergency card refill':e.kind==='card'?'Conditional card refill':'Natural reset')}</b><span>${name(s.accounts.find(a=>a.id===e.id))} · +${money(e.gain)}</span></div>`).join('')}${events.length>8?`<div><b>${tr('{n} further refill events',{n:events.length-8})}</b></div>`:''}</div>
+      <p class="v-caption">${tr('Long-range scenario assumes unchanged demand, capacity and continued subscriptions. Only known cards are included. New cards or official resets rebuild the future, never the saved past.')}</p>`);
+  }
+
   function poolOverview(s) {
     const opt=optimization(s), scope=s.optimization?.input?.accounts;
     const accounts=scope?scope.map(v=>{const a=s.accounts.find(a=>a.id===v.id);return a?{...a,estimate:{...a.estimate,full:v.full,tokens:v.tokens}}:null;}).filter(Boolean):s.accounts;
@@ -212,7 +274,7 @@ const quotaPlannerView = (() => {
       if(opt?.demandKnown)p.rate=opt.input.demand;
     } else if(!scenarioPolicies.has(s.policy))p.forecast={points:[],events:[]};
     const next=p.forecast.events?.[0],ready=p.coverage>0;
-    return `<div class="v-metrics">${metric('Estimated pool remaining',ready?money(p.total):'—',tr('{n} of {total} accounts calibrated',{n:p.coverage,total:p.count}))}${metric('Estimated full week',ready?money(p.full):'—',tr('API-equivalent allowance'))}${metric('Recommended pace',ready?money(p.required)+' / h':'—',tr('Current allowance deadlines'))}</div>${panel('Pool allowance forecast',`<div class="v-view-tools"><label>${tr('Scenario demand · USD / h')} <input id="qpDemand" type="number" min="0" step="0.1" placeholder="${n(p.observed)}" value="${s.demand??''}"></label><span>${tr('Past 24 hours → next 72 hours')}</span></div>${poolChart(p)}${next?`<p class="v-caption">${tr('Next refill')} · ${stamp(next.at)} · ${name(s.accounts.find(a=>a.id===next.id))} · ${tr(next.kind==='card'?'Conditional card refill':'Natural reset')} +${money(next.gain)}</p>`:''}`, 'Each color is one account. Past balances use the current calibration; pale areas are forecasts. Unused cards are excluded from the current balance.')}${panel('Recorded consumption per hour',poolRate(p),'Actual gateway usage at API list prices; unknown prices are excluded and missing hours stay unknown.')}${panel('Routing scenario comparison',comparison(s,p),'These are comparable scenarios, not guaranteed savings or a globally optimal schedule.')}${panel('Calibration details',`<div class="v-scroll"><table class="v-pool-table"><thead><tr>${['Account','Estimated full week','Calibration window','Matched decline','Samples','Auto-use before expiry'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead><tbody>${s.accounts.map(a=>`<tr><td>${dot(a)}${name(a)}</td><td>${money(a.estimate?.full)}</td><td>${a.estimate?stamp(a.estimate.since)+' → '+stamp(a.estimate.through):'—'}</td><td>${n(a.estimate?.used)} pp</td><td>${n(a.estimate?.samples)}</td><td>${tr(a.auto?'Enabled':'Off')}</td></tr>`).join('')}</tbody></table></div>`,'Estimates depend on model and cache mix. Use outside magpie can understate capacity. Missing accounts are not zero. Currency follows Settings; this is not a cash balance.')}`;
+    return `<div class="v-metrics">${metric('Estimated pool remaining',ready?liveNumber('pool-total',p.total):'—',tr('{n} of {total} accounts calibrated',{n:p.coverage,total:p.count}))}${metric('Estimated full week',ready?liveNumber('pool-full',p.full):'—',tr('API-equivalent allowance'))}${metric('Recommended pace',ready?liveNumber('pool-target',p.required,'rate'):'—',tr('Current allowance deadlines'))}</div>${pacePanel(p,s)}<div class="v-view-tools"><label>${tr('Scenario demand · USD / h')} <input id="qpDemand" type="number" min="0" step="0.1" placeholder="${n(p.observed)}" value="${s.demand??''}"></label></div>${explorer(s)}${panel('Routing scenario comparison',comparison(s,p),'These are comparable scenarios, not guaranteed savings or a globally optimal schedule.')}${panel('Calibration details',`<div class="v-scroll"><table class="v-pool-table"><thead><tr>${['Account','Estimated full week','Calibration window','Matched decline','Samples','Auto-use before expiry'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead><tbody>${s.accounts.map(a=>`<tr><td>${dot(a)}${name(a)}</td><td>${money(a.estimate?.full)}</td><td>${a.estimate?stamp(a.estimate.since)+' → '+stamp(a.estimate.through):'—'}</td><td>${n(a.estimate?.used)} pp</td><td>${n(a.estimate?.samples)}</td><td>${tr(a.auto?'Enabled':'Off')}</td></tr>`).join('')}</tbody></table></div>`,'Estimates depend on model and cache mix. Use outside magpie can understate capacity. Missing accounts are not zero. Currency follows Settings; this is not a cash balance.')}`;
   }
   function routingPreview(accounts,policy,optimization=null) {const s={accounts,policy,demand:null,optimization};const p=M.pool(accounts,policy);return comparison(s,p,true);}
   function demoResult(d) {
@@ -220,6 +282,6 @@ const quotaPlannerView = (() => {
     const p={accounts,forecast:d.result,now:d.input.now,full:d.input.accounts.reduce((v,a)=>v+a.full,0),coverage:accounts.length,rate:d.input.demand};
     return panel('Pool allowance forecast',poolChart(p))+`<div class="v-metrics">${metric('Projected use · 72 h',money(d.result.spent))}${metric('Remaining after 72 h',money(d.result.remaining))}${metric('Unused at refills',money(d.result.waste))}</div>`;
   }
-  return { render, esc, updateForecast, routingPreview, demoResult };
+  return { render, esc, updateForecast, routingPreview, demoResult, liveFormat };
 
 })();

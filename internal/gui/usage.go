@@ -99,7 +99,24 @@ func requestContent(agent, session string, from, to, at time.Time) contentJSON {
 }
 
 func usageRoutes(mux *http.ServeMux, w Windows) {
-	mux.HandleFunc("GET /api/usage/quota-plan", coldTurn(func(rw http.ResponseWriter, r *http.Request) { writeJSON(rw, usage.QuotaPlan(usage.Clock())) }))
+	mux.HandleFunc("GET /api/usage/quota-plan", coldTurn(func(rw http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("history") == "1" {
+			from, e1 := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
+			to, e2 := strconv.ParseInt(r.URL.Query().Get("to"), 10, 64)
+			if e1 != nil || e2 != nil {
+				http.Error(rw, "invalid timeline range", 400)
+				return
+			}
+			data, err := usage.QuotaTimeline(from, to, 120, usage.Clock())
+			if err != nil {
+				http.Error(rw, "timeline unavailable", 503)
+				return
+			}
+			writeJSON(rw, data)
+			return
+		}
+		writeJSON(rw, usage.QuotaPlan(usage.Clock()))
+	}))
 	// Pure sandbox simulation: never publishes its plan to routing or calls a vendor.
 	mux.HandleFunc("POST /api/usage/quota-plan/demo", func(rw http.ResponseWriter, r *http.Request) {
 		var in quotaplan.Input

@@ -18,7 +18,7 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   const theme=lang==='zh'?'dark':'light';
   const page=await browser.newPage({viewport:{width:1440,height:950},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
   page.setDefaultNavigationTimeout(60000);
-  const errors=[],mutations=[]; let mode='ok', delayed=null, qReads=0;
+  const errors=[],mutations=[]; let mode='ok', delayed=null, qReads=0, paceMode='normal';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const req=route.request(), u=new URL(req.url()), json=x=>route.fulfill({json:x});
@@ -28,7 +28,10 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
    if(u.pathname==='/api/state')return json({agents:[],profiles:[],settings:{lang,theme},fx:{rate:7}});
    if(u.pathname==='/api/providers')return json({providers:[],presets:[],excluded:[],models:[],gateway:{running:false}});
    if(u.pathname==='/api/usage/quotas') {qReads++;if(mode==='delay') await new Promise(r=>delayed=r);if(mode==='error')return route.fulfill({status:503,body:'unavailable'});return json(mode==='empty'?[]:accounts);}
-   if(u.pathname==='/api/usage/quota-pool')return json(poolData);
+   if(u.pathname==='/api/usage/quota-pool')return json(paceMode==='normal'?poolData:poolData.map(a=>({...a,hourly:a.hourly.map(p=>({...p,cost:0,to:paceMode==='stale'?at(-10):p.to}))})));
+   if(u.pathname==='/api/usage/quota-plan'&&u.searchParams.get('history')==='1'){
+    const from=+u.searchParams.get('from'),to=+u.searchParams.get('to');return json({earliest:now-30*86400000,bins:[{from,to:Math.min(now,to),actual:12,predicted:10,known:to<=now}],observations:[],forecasts:[]});
+   }
    if(u.pathname==='/api/usage/quota-plan')return json({input:planInput,result:solveFixture(planInput),demandKnown:true,total:3,coverage:3});
    if(u.pathname==='/api/usage/quota-plan/demo')return json(solveFixture(req.postDataJSON()));
    if(u.pathname==='/api/usage/quotas/history')return json(history);
@@ -44,6 +47,35 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   await page.locator('#qpBody .v-account').first().waitFor();
   assert.equal(await page.locator('#qpBody .v-account').count(),3);
   assert.equal(await page.locator('#qpBody .v-timeline').count(),1);
+  const bands=page.locator('.v-explorer-svg').first().locator('[data-qp-weekend]');
+  assert(await bands.count()>0,'week view shows a weekend');
+  assert.equal(await bands.count(),await page.locator('.v-explorer-svg').nth(1).locator('[data-qp-weekend]').count(),'balance and usage mark the same weekends');
+  assert.equal(await bands.first().getAttribute('opacity'),'.11');
+  assert.equal(await page.locator('.v-live-pace').getAttribute('data-pace-state'),'steady');
+  await page.locator('[data-qp-scale=years]').click();
+  assert.equal(await page.locator('[data-qp-scale=years]').getAttribute('class'),'opt on');
+  assert.equal(await bands.first().getAttribute('opacity'),'.045','long view softens weekend bands');
+  assert(!/NaN|Infinity/.test(await page.locator('.v-explorer-chart').innerHTML()));
+  const oldDate=await page.locator('#qpDate').inputValue();
+  await page.locator('[data-qp-move="1"]').click();
+  assert.notEqual(await page.locator('#qpDate').inputValue(),oldDate);
+  await page.locator('[data-qp-rescue]').click();
+  assert.equal(await page.locator('[data-qp-rescue]').getAttribute('aria-pressed'),'false');
+  await page.locator('[data-qp-scale=week]').click();await page.locator('[data-qp-move=now]').click();
+  if(lang==='en'){
+   await page.waitForFunction(()=>!!document.querySelector('[data-qp-explore]')&&!document.querySelector('.v-explorer-chart')?.parentElement.querySelector('[role=status]'));
+   const chart=page.locator('[data-qp-explore]');
+   const initial=await page.locator('#qpDate').inputValue();await chart.focus();await chart.press('ArrowRight');
+   assert.notEqual(await page.locator('#qpDate').inputValue(),initial,'keyboard explores later dates');
+   await page.waitForFunction(()=>!!document.querySelector('[data-qp-explore]')&&!document.querySelector('.v-explorer-chart')?.parentElement.querySelector('[role=status]'));
+   await chart.hover({position:{x:100,y:70}});
+   const next=await page.locator('#qpDate').inputValue(),rect=await chart.boundingBox();assert(rect,'timeline is visible before dragging');
+   await page.mouse.down();
+   await page.mouse.move(rect.x+rect.width*.6,rect.y+70,{steps:5});await page.mouse.up();
+   assert.notEqual(await page.locator('#qpDate').inputValue(),next,'drag explores later dates');
+   await page.locator('[data-qp-move=now]').click();
+  }
+
   await page.evaluate(()=>hideAccounts.set(true));
   await page.locator('#qpBody .v-account .pii').first().waitFor();
   await page.evaluate(()=>hideAccounts.set(false));
@@ -83,6 +115,12 @@ for(const engine of (process.env.BROWSER?[process.env.BROWSER]:['chromium','webk
   if(lang==='en'){
    await page.setViewportSize({width:1440,height:950});
    await page.locator('#qpTabs [data-tab=plan]').click();
+   paceMode='zero';
+   await page.waitForFunction(()=>document.querySelector('.v-live-pace')?.dataset.paceState==='slow',null,{timeout:25000});
+   const displayed=await page.locator('[data-qp-number=pace-actual]').getAttribute('data-qp-value');assert.equal(displayed,'0');
+   paceMode='stale';
+   await page.waitForFunction(()=>document.querySelector('.v-live-pace')?.dataset.paceState==='unknown',null,{timeout:25000});
+   assert.equal(await page.locator('[data-qp-number=pace-actual]').getAttribute('data-qp-value'),'');paceMode='normal';
    mode='error';await page.locator('#qpReload').click();await page.getByText('Allowance data could not be read.',{exact:true}).waitFor();
    mode='empty';await page.locator('#qpReload').click();await page.getByText('No subscription accounts are available to plan.',{exact:true}).waitFor();
    mode='delay';await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpReload').disabled);

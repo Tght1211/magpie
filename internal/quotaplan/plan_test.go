@@ -206,3 +206,48 @@ func TestCardsCannotRefillTwiceWithoutRequiredUse(t *testing.T) {
 		t.Fatal(r)
 	}
 }
+
+func TestRescueBeforeExpiryAndShiftedNaturalReset(t *testing.T) {
+	in := fixture()
+	in.Hours = 24
+	in.Demand = 10
+	in.Accounts = []Account{{ID: "a", Group: "codex", Full: 100, Left: 0, Tokens: 1000, Reset: in.Now + 8*Hour, PeriodHours: 168, Rescue: true, Cards: []Card{{ID: "card", Expiry: in.Now + 48*Hour}}}}
+	r, err := Solve(in, time.Second)
+	if err != nil || r.Spent != 100 || len(r.Events) != 1 || r.Events[0].Kind != "rescue" || r.Events[0].At != in.Now {
+		t.Fatalf("rescue must serve demand now and replace the old reset: %+v %v", r, err)
+	}
+	in.Accounts[0].Rescue = false
+	r, err = Solve(in, time.Second)
+	if err != nil || len(r.Events) != 1 || r.Events[0].Kind != "reset" {
+		t.Fatalf("auto-use must remain opt-in: %+v %v", r, err)
+	}
+	in.Accounts[0].Rescue = true
+	in.Accounts[0].RescueAfter = in.Now + 72*Hour
+	r, err = Solve(in, time.Second)
+	for _, e := range r.Events {
+		if e.Kind == "rescue" {
+			t.Fatal("cooldown bypassed", e)
+		}
+	}
+}
+
+func TestRescueNeedsEmptyCompatibleInventory(t *testing.T) {
+	in := fixture()
+	in.Hours = 6
+	in.Demand = 2
+	in.Accounts = []Account{{ID: "a", Full: 100, Left: 0, Reset: in.Now + 30*Hour, PeriodHours: 168, Rescue: true, Cards: []Card{{ID: "card", Expiry: in.Now + 48*Hour}}}, {ID: "b", Full: 100, Left: 50, Reset: in.Now + 30*Hour, PeriodHours: 168}}
+	_, ok, _ := scenario(in, []decision{{account: 0, card: 0, at: in.Now, rescue: true}}, 1, in.Now+6*Hour, time.Now().Add(time.Second))
+	if ok {
+		t.Fatal("must not rescue while another compatible account has balance")
+	}
+	in.Accounts[1].Blocked = true
+	r, ok, _ := scenario(in, []decision{{account: 0, card: 0, at: in.Now, rescue: true}}, 1, in.Now+6*Hour, time.Now().Add(time.Second))
+	if !ok || len(r.Events) != 1 || r.Events[0].Kind != "rescue" {
+		t.Fatal("held accounts cannot prevent rescue", r)
+	}
+	in.Accounts[0].Left = 20
+	_, ok, _ = scenario(in, []decision{{account: 0, card: 0, at: in.Now, rescue: true}}, 1, in.Now+6*Hour, time.Now().Add(time.Second))
+	if ok {
+		t.Fatal("80 percent eligibility alone is not emergency exhaustion")
+	}
+}

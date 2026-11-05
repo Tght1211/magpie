@@ -31,3 +31,12 @@ test('cache share excludes unknown prompt tokens and missing data stays unknown'
  assert.equal(M.cache({input:100,cache_read:300,cache_write:100,cache_unknown:100}).rate,.75);
  assert.equal(M.cache({input:100,cache_unknown:100}).rate,null);
 });
+test('live pace uses the last complete hour, independent of forecast demand',()=>{
+ const p={hourly:[{at:now-hour,cost:999},{at:now,cost:40}],required:20,total:100,coverage:2,count:2,rate:500};
+ assert.equal(M.pace(p,now).status,'fast');assert.equal(M.pace(p,now).ratio,2);assert.equal(M.pace(p,now).runway,2.5);
+ p.hourly[1].cost=16;assert.equal(M.pace(p,now).status,'steady');
+ p.hourly[1].cost=24;assert.equal(M.pace(p,now).status,'steady');
+ p.hourly[1].cost=0;assert.equal(M.pace(p,now).status,'slow');assert.equal(M.pace(p,now).runway,null);
+ assert.equal(M.pace(p,now+91000).status,'unknown');p.count=3;assert.equal(M.pace(p,now).actual,null);
+ p.count=2;p.required=0;assert.equal(M.pace(p,now).ratio,null);
+});

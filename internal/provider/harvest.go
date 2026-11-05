@@ -1,6 +1,9 @@
 package provider
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Harvest preserves natural refills, then spends current allowance before
 // the next refill. It does not enable automatic card use or change affinity.
@@ -91,4 +94,14 @@ func harvestCardReady(windows []QuotaWindow, until, now time.Time) bool {
 		return w.Used >= 20
 	}
 	return false
+}
+
+// CodexRescueAfter mirrors the existing emergency executor's cooldown. It
+// never enables auto-use or spends a card; failed saved-state reads retain
+// that executor's conservative recovery behavior.
+func CodexRescueAfter(user string) time.Time {
+	autoReset.Lock()
+	defer autoReset.Unlock()
+	autoReset.load()
+	return maxTime(autoReset.spent[autoResetAny].Until, autoReset.spent[strings.ToLower(user)].Until)
 }

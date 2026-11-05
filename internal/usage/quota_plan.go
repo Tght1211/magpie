@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
@@ -87,15 +88,21 @@ func QuotaPlan(now time.Time) PoolPlan {
 		if full <= 0 {
 			continue
 		}
-		_, auto := provider.CodexAutoResetWhen(q.User)
+		rescue, auto := provider.CodexAutoResetWhen(q.User)
 		auto = auto && q.Provider == "codex"
-		a := quotaplan.Account{ID: accountID(q.Provider, q.User), Group: q.Provider, Full: full, Tokens: tokens, Left: 100 - w.Used, Reset: w.ResetsAt.UnixMilli(), PeriodHours: 168, Auto: auto, LeadMinutes: lead, Blocked: q.Held, Cards: []quotaplan.Card{}}
+		rescue = rescue && q.Provider == "codex"
+		a := quotaplan.Account{ID: accountID(q.Provider, q.User), Group: q.Provider, Full: full, Tokens: tokens, Left: 100 - w.Used, Reset: w.ResetsAt.UnixMilli(), PeriodHours: 168, Auto: auto, Rescue: rescue, LeadMinutes: lead, Blocked: q.Held, Cards: []quotaplan.Card{}}
 		for _, v := range q.Windows {
 			if !v.Aside && v.Used >= 100 && v.ResetsAt != nil && v.ResetsAt.After(now) && v.Name != w.Name {
 				a.Blocked = true
 			}
 		}
-		if auto && q.Resets != nil {
+		if rescue {
+			if after := provider.CodexRescueAfter(q.User); !after.IsZero() {
+				a.RescueAfter = after.UnixMilli()
+			}
+		}
+		if (auto || rescue) && q.Resets != nil {
 			for i, c := range q.Resets.Each {
 				if c.Until != nil && c.Until.After(now) && (c.Window == "" || c.Window == "weekly") {
 					a.Cards = append(a.Cards, quotaplan.Card{ID: strings.Join([]string{q.User, c.ID, fmt.Sprint(i)}, "/"), Expiry: c.Until.UnixMilli()})
@@ -242,6 +249,7 @@ func publishQuotaPlan(p PoolPlan, now time.Time) {
 // KeepQuotaPlan shares the gateway lifecycle. No request starts a goroutine or
 // reads the ledger; shutdown cancels the ticker with the other gateway loops.
 func KeepQuotaPlan(ctx context.Context) {
+	lastArchive := time.Time{}
 	tick := time.NewTicker(time.Minute)
 	defer tick.Stop()
 	for {
@@ -257,9 +265,19 @@ func KeepQuotaPlan(ctx context.Context) {
 				break
 			}
 		}
-		if on {
-			now := Clock()
-			publishQuotaPlan(QuotaPlan(now), now)
+		now := Clock()
+		archive := lastArchive.IsZero() || now.Sub(lastArchive) >= 5*time.Minute || now.Before(lastArchive)
+		if on || archive {
+			p := QuotaPlan(now)
+			if on {
+				publishQuotaPlan(p, now)
+			}
+			if archive {
+				if err := recordQuotaPlan(p, now); err != nil {
+					log.Printf("quota forecast archive: %v", err)
+				}
+				lastArchive = now
+			}
 		}
 		select {
 		case <-ctx.Done():
