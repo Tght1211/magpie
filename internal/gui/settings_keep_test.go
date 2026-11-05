@@ -220,6 +220,9 @@ func TestSettingsSaveKeepsWhatItDoesNotSend(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if err := settings.BindQuotaMember("member", "codex/account"); err != nil {
+		t.Fatal(err)
+	}
 	was = settings.Load()
 	rec := httptest.NewRecorder()
 	Handler(nil, nil).ServeHTTP(rec, httptest.NewRequest("POST", "/api/settings", strings.NewReader(`{"theme":"dark"}`)))

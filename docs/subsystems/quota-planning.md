@@ -167,3 +167,67 @@ Weekend shading covers local Saturday midnight through Monday midnight in both
 explorer charts. Boundaries follow browser calendar dates, including DST; short
 views label wide bands and long views reduce their opacity. Shading changes no
 consumption assumptions or routing priorities.
+
+## Member dashboard (approved battery layout)
+
+The four native tabs are planning, consumption review, Key sharing benefit and
+pool health. The explanation demo is no longer registered. The account stack is
+the planning default; controls sit above it, with date navigation and Back to now
+in one strip below. Dragging preserves the range input rather than replacing it
+mid-gesture. Weekends use the browser's local calendar. Minute allowance reads and
+15-second measured pace reads use the existing lifecycle; no simulated refresh
+values are shipped. Automatic refresh can be paused, and successful refresh time
+is visible. Number interpolation occurs only when actual readings change.
+
+`GET /api/usage/quota-members` provides 30 days of local hourly Key/account/model
+aggregates, current key metadata without secrets, stable account references and
+explicit bindings. `POST` changes one binding only: one member Key owns exactly
+one contributed account, and a contributed account cannot have two owners. The
+annotation lives in `Settings.QuotaMembers`; it grants no permissions and never
+changes `access.Key.Accounts`. Ordinary or stale settings saves preserve it.
+Unreadable settings are not overwritten. Issued child-key use is attributed to its
+issuer. Unknown caller/account identifiers remain unattributed. Failed reads,
+unpriced demand and short history do not become zero. No request bodies leave the
+usage ledger. The new endpoint remains behind the existing authenticated web API.
+
+Compatibility is conservative: a successful model/account pairing in retained
+local history, intersected with the gateway's `Allows`, `AllowsAccount` and
+`AccountServes` predicates. An unobserved pairing is not promised capacity.
+Observed provider/model IDs identify the served model, not an inferred cross-vendor
+substitute. Key budget limits currently make forecasts unknown; the dashboard does
+not pretend that an unknown remaining Key budget is unlimited. Concurrency, cache,
+latency, short windows and actual vendor eligibility still belong to routing.
+
+The new `planner-members.js` is a conditional counterfactual, separate from the
+production min-cost-flow router. It estimates demand from the last 24 complete,
+priced hourly bins. A bipartite residual-flow network assigns each account's
+inventory once to compatible member/model demand. Maximum common demand scaling
+establishes a max-min fair share, then residual flow uses available surplus. The
+available-balance curves use that common scaling for all members jointly; they
+never allocate the whole pool to each Key independently. The own-account scenario
+uses the same member demand and that one account. The smaller chart shows forward
+cumulative fulfilled demand; actual past use is displayed separately, never
+reconstructed into hypothetical historical savings. Model filtering changes the
+readout, not the competing pool workload.
+
+Health compares natural hourly capacity (`full / periodHours`) with those demands
+using the same compatibility network. Cards do not enter this sustainable ratio.
+Thirty-day hourly projections compare natural-only replenishment against known,
+finite, enabled cards. Natural resets precede card decisions; card eligibility,
+expiry, emergency opt-in/cooldown and the sliding natural reset are retained.
+These are discretized scenarios, not globally optimal schedules or an operational
+availability SLA. Admission adds one user-entered calibrated account and its demand
+together; a subscription's sticker price does not imply capacity. Unknown inputs
+leave results blank. New cards or vendor resets rebuild future projections.
+
+The ledger's net shared contribution is actual priced use served to other identified
+members minus use borrowed from their contributed accounts. Own consumption is
+separate. Unbound accounts and unattributed users are excluded from transfers;
+unpriced relevant records make that member's result unknown. Contributions can be
+negative without implying misuse. Planning archive forecasts remain immutable;
+consumption review compares only recorded intervals, not a line fitted after use.
+
+UI polish follows Unslop by Damir Sokolovsky (@heydamir), CC BY 4.0, preserving
+Magpie's palette, fonts, shell and menu components. Regression tests cover capacity
+conservation, model bottlenecks, finite cards, sliding resets, binding uniqueness,
+corrupt/stale settings, authentication, privacy and all four tabs in both engines.

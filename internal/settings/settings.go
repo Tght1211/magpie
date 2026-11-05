@@ -46,7 +46,9 @@ const CodexSubagentLead = "lead"
 
 // Settings is what the user chose. "" and "system" both mean "follow the OS".
 type Settings struct {
-	Theme string `json:"theme,omitempty"` // system | light | dark
+	// QuotaMembers binds each member Key to one contributed account; it grants no access.
+	QuotaMembers map[string]string `json:"quotaMembers,omitempty"`
+	Theme        string            `json:"theme,omitempty"` // system | light | dark
 	// Colorblind switches chart series (--c1…--c7) to an Okabe–Ito palette
 	// and gives each quota curve window, and its legend key, a dash of its
 	// own (#2073).
@@ -1383,6 +1385,7 @@ func (s Settings) Compact() int {
 // Discord: usage turned off on a Mac came back from a Windows box that
 // shows it; Lullaby: sharing turned on at home came on at work).
 func (s *Settings) KeepOwn(cur Settings) {
+	s.QuotaMembers = cur.QuotaMembers
 	s.GatewayConversations = cur.GatewayConversations
 	s.SessionReads = cur.SessionReads
 	s.UIFont, s.CodeFont = cur.UIFont, cur.CodeFont
@@ -1858,7 +1861,7 @@ func SetSessionReads(edit func(*SessionReads) *SessionReads) error {
 		cur = c
 	}
 	s.SessionReads = edit(cur)
-	return saveOwn(s, false, true)
+	return saveOwn(s, false, true, false)
 }
 
 // SetGatewayConversations changes local recording consent without overwriting
@@ -2053,11 +2056,11 @@ func UseRedactModel(name string) error {
 }
 
 // save is called under fileMu. Only the consent setter may replace recording.
-func save(s Settings, recording bool) error { return saveOwn(s, recording, false) }
+func save(s Settings, recording bool) error { return saveOwn(s, recording, false, false) }
 
-// saveOwn is save; reads says s's SessionReads is the one to write, where
-// any other save keeps the file's.
-func saveOwn(s Settings, recording, reads bool) error {
+// saveOwn preserves recording, session-read consent and member bindings unless
+// their dedicated setters explicitly replace them under the same file lock.
+func saveOwn(s Settings, recording, reads, members bool) error {
 	defer filememo.Forget() // read again, where a request holds it
 	// what is written is settled: a Settings read from an older file was
 	// settled as it was read, and one made without reading has its Dock
@@ -2271,6 +2274,7 @@ func saveOwn(s Settings, recording, reads bool) error {
 	// Do not replace it, including its permissions, with those values.
 	consent := false
 	var storedReads *SessionReads
+	var storedMembers map[string]string
 	if b, err := steady.ReadFile(Path()); err == nil {
 		b = bytes.TrimPrefix(b, []byte("\xef\xbb\xbf"))
 		if len(bytes.TrimSpace(b)) != 0 {
@@ -2287,6 +2291,7 @@ func saveOwn(s Settings, recording, reads bool) error {
 			}
 			consent = stored.GatewayConversations
 			storedReads = stored.SessionReads
+			storedMembers = stored.QuotaMembers
 		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("could not read settings at %s: %w", Path(), err)
@@ -2296,6 +2301,9 @@ func saveOwn(s Settings, recording, reads bool) error {
 	}
 	if !reads {
 		s.SessionReads = storedReads
+	}
+	if !members {
+		s.QuotaMembers = storedMembers
 	}
 	// the file there now is kept first, before anything below can make
 	// one: as the last good generation, or aside when it doesn't read

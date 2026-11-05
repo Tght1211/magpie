@@ -211,3 +211,72 @@
 .qp .v-metrics b [data-qp-number] {font-size:inherit;color:inherit;display:inline}
 .qp .v-explorer-tools input[type=date] {background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:4px 6px;font:inherit;color-scheme:light dark}
 .qp .v-weekend-label {fill:var(--c4);font-size:11px}
+
+/* Approved battery layout. Unslop method by @heydamir, CC BY 4.0. */
+.qp {font-variant-numeric:tabular-nums}
+.qp .v-pace-badge::before {animation:none}
+.qp .qp-battery-panel {padding:0;overflow:hidden}
+.qp .qp-summary {display:grid;grid-template-columns:1fr 1.25fr;gap:24px;padding:20px}
+.qp .qp-balance {min-width:0;padding-right:24px;border-right:1px solid var(--line)}
+.qp .qp-balance>small {color:var(--fg-2);font-size:12px}
+.qp .qp-balance>strong {display:block;font-size:36px;font-weight:500;line-height:1.2;margin:12px 0}
+.qp .qp-balance p {font-size:11px;color:var(--muted);margin-top:8px}
+.qp .qp-battery {display:flex;gap:2px;height:8px;border-radius:3px;overflow:hidden}
+.qp .qp-summary .v-live-pace {border:0;padding:0;margin:0;background:none}
+.qp .qp-summary .v-pace-summary {margin:8px 0}
+.qp .qp-summary .v-pace-summary b {font-size:24px}
+.qp .qp-summary .v-pace-summary>strong {font-size:16px}
+.qp .qp-summary .v-pace-gauge {height:4px}
+.qp .qp-summary .v-pace-advice {margin:8px 0;font-size:12px}
+.qp .qp-summary .v-pace-footer {font-size:11px}
+.qp .qp-summary .v-caption {margin:4px 0;font-size:11px}
+.qp .qp-controls {display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 20px;background:var(--card-2);border-block:1px solid var(--line-2);font-size:12px}
+.qp .qp-controls input {width:88px;min-width:0}
+.qp .qp-battery-panel .v-explorer-chart {margin:0 16px}
+.qp .v-explorer-svg {display:block;width:100%;height:auto;max-height:360px}
+.qp .qp-date-nav {padding:12px 20px;background:var(--card-2);border-top:1px solid var(--line-2)}
+.qp .qp-date-nav .v-view-tools {margin:0;gap:8px;font-size:11px}
+.qp .qp-date-nav input[type=date] {max-width:140px;font-size:12px}
+.qp .qp-date-track {display:flex;align-items:center;gap:8px}
+.qp .qp-date-track input {flex:1;min-width:0;accent-color:var(--fg-2)}
+.qp .qp-date-scales {margin:4px 0 0;flex-wrap:wrap}
+.qp .qp-selection {display:flex;align-items:center;gap:16px;padding:12px 20px;border-top:1px solid var(--line-2);font-size:12px}
+.qp .qp-selection input {flex:1;min-width:40px;accent-color:var(--fg-2)}
+.qp .qp-account-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:20px;padding:12px 20px 20px}
+.qp .qp-account {display:flex;flex-direction:column;gap:8px;min-width:0}
+.qp .qp-account>b {font-weight:500;font-size:12px;overflow-wrap:anywhere}
+.qp .qp-account small {color:var(--muted);font-size:11px}
+.qp .qp-account>strong {font-weight:500;font-size:18px}
+.qp .qp-account strong small {display:block;margin-top:4px}
+.qp .qp-meter {height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.qp .qp-meter i {display:block;height:100%}
+.qp .v-metrics {grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.qp .v-metrics b {font-weight:500;overflow-wrap:anywhere}
+.qp .v-event-strip {margin:12px 0;display:flex;overflow-x:auto}
+.qp .v-event-strip>div {flex:1;min-width:180px;padding:12px;background:var(--card)}
+.qp .qp-scope {display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 0;font-size:12px}
+.qp .qp-scope small {color:var(--muted)}
+.qp .qp-admission {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:16px 0}
+.qp .qp-admission label {display:flex;flex-direction:column;gap:8px;min-width:0;font-size:12px;color:var(--fg-2)}
+.qp .qp-admission input {width:100%;min-width:0}
+.qp button,.qp input {transition:background-color 160ms ease,color 160ms ease,border-color 160ms ease}
+.qp button:focus-visible,.qp input:focus-visible {outline:2px solid var(--fg-2);outline-offset:2px}
+@media(max-width:700px){
+ .qp .qp-tools {gap:8px}.qp .qp-tools .segs {width:100%;flex-wrap:wrap}
+ .qp .qp-summary {gap:12px;padding:16px 12px;grid-template-columns:1fr 1fr}
+ .qp .qp-balance {padding-right:12px}.qp .qp-balance>strong {font-size:28px}
+ .qp .qp-summary .v-pace-summary {flex-wrap:wrap}.qp .qp-summary .v-pace-summary b {font-size:20px}
+ .qp .qp-summary .v-pace-summary>strong,.qp .qp-summary .v-pace-versus,.qp .qp-summary .v-pace-footer {display:none}
+ .qp .qp-controls,.qp .qp-date-nav,.qp .qp-selection {padding:12px}
+ .qp .qp-controls {gap:8px}.qp .qp-selection {flex-wrap:wrap}.qp .qp-selection input {width:100%;flex-basis:100%}
+ .qp .qp-account-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:12px}
+ .qp .qp-admission {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .qp .v-metrics {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .qp .qp-battery-panel .v-explorer-chart {margin:0 8px}.qp .v-view-tools {flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){.qp button,.qp input {transition:none}}
+.qp .qp-battery {background:var(--line-2)}
+.qp input[type=date] {background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;color-scheme:light dark}
+.qp .qp-key-time {padding:12px;background:var(--card-2);border-radius:6px}
+.qp .qp-key-time>input {width:100%;accent-color:var(--fg-2)}
+.qp #qpKeyReadout {display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:var(--fg-2)}

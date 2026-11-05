@@ -99,6 +99,7 @@ func requestContent(agent, session string, from, to, at time.Time) contentJSON {
 }
 
 func usageRoutes(mux *http.ServeMux, w Windows) {
+	quotaMemberRoutes(mux)
 	mux.HandleFunc("GET /api/usage/quota-plan", coldTurn(func(rw http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("history") == "1" {
 			from, e1 := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)

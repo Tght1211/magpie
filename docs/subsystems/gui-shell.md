@@ -1025,26 +1025,18 @@ saves, narrow layouts and all five languages in Chromium and WebKit.
 
 ## Quota planning (custom build)
 
-The Usage plugin contributes `quota-planner`, with allowance deadlines,
-consumption scenarios, gateway-key usage and an interactive explanation.
-Its scoped modules use the shell lifecycle, translations and privacy masking.
-The authenticated APIs, calibrated money estimates, solver boundaries and
-routing integration are described in [quota planning](quota-planning.md).
-Hiding the page stops its minute timer and invalidates pending reads; late
-results cannot replace a later visit. Failed reads are shown as unknown.
+The Usage plugin contributes `quota-planner`, with the approved compact battery
+layout: planning, consumption review, Key sharing benefit and pool health.
+The former mechanism demo is removed from navigation. Scoped modules use the
+shell lifecycle, translations and privacy masking. See [quota planning](quota-planning.md)
+for authenticated APIs, explicit one-Key/one-account ownership, calibrated money,
+conditional member forecasts and the boundary with real routing.
 
-Key charts use the gateway summary's final calls (retries are not extra
-tasks), with a pool-wide daily series and per-key totals. Cache input share
-excludes tokens with unknown cache accounting. Single-account scheduling
-counterfactuals remain uncomputed without reliable workload assumptions;
-no inferred savings or unsent demand are presented as observed benefits.
-
-The fictional-account explanation uses the pure simulation endpoint;
-changing its inputs never modifies accounts or spends reset cards. The
-provider editor's harvest choice remains staged until its ordinary Save.
-`quota-planner-model.test.cjs` checks deadline and history semantics;
-`quota-planner.test.cjs` exercises the shell in both browser engines and
-five languages, including masking, narrow layouts and stale navigation.
+Hiding the page stops timers and invalidates pending reads. Failed reads remain
+unknown. Timeline dragging preserves its input and focus; review keeps its own
+history range. Automatic/manual refresh uses actual readings, with visible refresh
+time and interpolation only for changed values. Both browser engines and all five
+languages are covered by `quota-planner.test.cjs`.
 
 ### Delayed layout and intentional scrolling
 

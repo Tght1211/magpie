@@ -11,11 +11,11 @@ const quotaExplorer = (() => {
     const demand=g=>Math.max(0,input.demands?.[g]??input.demand??0);
     let at=input.now, spent=0,unserved=0,cardCount=0,cardGain=0;
     const points=[],events=[],uses=[];
-    const snap=()=>{const parts=[0,0,0];for(const a of aa)parts[a.source]+=a.balance;points.push({at,parts,total:parts.reduce((v,w)=>v+w,0)});};
+    const snap=()=>{const parts=[0,0,0];for(const a of aa)parts[a.source]+=a.balance;points.push({at,parts,values:aa.map(a=>a.balance),total:parts.reduce((v,w)=>v+w,0)});};
     const refill=(a,kind,c)=>{const old=a.reset,gain=a.full-a.balance;if(c){c.used=true;a.reset=at+a.periodHours*hour;cardCount++;cardGain+=gain;if(kind==='rescue')a.after=old;}else a.reset+=a.periodHours*hour;
       a.balance=a.full;a.source=c?2:1;events.push({at,id:a.id,kind,gain,next:a.reset,old});snap();};
     snap();
-    for(let guard=0;at<end&&guard<200000;guard++) {
+    for(let guard=0;at<=end&&guard<200000;guard++) {
       // Natural resets at the same instant precede any emergency decision.
       for(const a of aa)if(a.reset<=at)refill(a,'reset');
       for(const a of aa){
@@ -26,6 +26,7 @@ const quotaExplorer = (() => {
         if(rescue&&a.rescue&&stock<=eps&&demand(a.group)>0&&at>=a.after)refill(a,'rescue',c);
         else if(a.auto&&a.balance<=a.full*.8+eps&&at>=c.expiry-(a.leadMinutes||30)*60000&&a.reset>=c.expiry)refill(a,'card',c);
       }
+      if(at>=end)break;
       const picks=groups.map(g=>({g,rate:demand(g),a:aa.filter(a=>a.group===g&&!a.blocked&&a.balance>eps).sort((a,b)=>{
         const deadline=a=>Math.min(a.reset,...(a.auto&&a.group==='codex'?a.cards.filter(c=>!c.used&&c.expiry>at).map(c=>c.expiry):[]));return deadline(a)-deadline(b);
       })[0]}));
@@ -51,7 +52,7 @@ const quotaExplorer = (() => {
     while(+d<to){const end=new Date(d);end.setDate(end.getDate()+2);if(+end>from)out.push({from:Math.max(from,+d),to:Math.min(to,+end)});d.setDate(d.getDate()+7);}
     return out;
   }
-  const scales=[{id:'day',days:1,key:'1 day'},{id:'week',days:7,key:'1 week'},{id:'month',days:30,key:'1 month'},{id:'year',days:365,key:'1 year'},{id:'years',days:3*365,key:'3 years'}];
+  const scales=[{id:'day',days:1,key:'1 day'},{id:'week',days:7,key:'1 week'},{id:'fortnight',days:14,key:'2 weeks'},{id:'month',days:30,key:'1 month'},{id:'year',days:365,key:'1 year'},{id:'years',days:3*365,key:'3 years'}];
   function range(s) {const span=(scales.find(v=>v.id===s.scale)||scales[1]).days*day;return {from:s.start??Date.now()-day,to:(s.start??Date.now()-day)+span,span};}
   return {project,range,scales,hour,day,weekendRanges};
 })();
