@@ -2,9 +2,38 @@ package usage
 
 import (
 	"github.com/yetone/magpie/internal/catalog"
+	"os"
 	"testing"
 	"time"
 )
+
+func TestQuotaMemberSnapshotCompletenessUsesLedgerOffset(t *testing.T) {
+	pageHome(t)
+	holdClock(t, time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC))
+	historyLog(t, 600)
+	if !QuotaMemberUses(Clock()).Complete {
+		t.Fatal("a fully read ledger was marked incomplete by its compressed index size")
+	}
+	f, err := os.OpenFile(Path(), os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.WriteString(`{"time":`); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if QuotaMemberUses(Clock()).Complete {
+		t.Fatal("a partial trailing record was treated as complete")
+	}
+	if err = os.Remove(Path()); err != nil {
+		t.Fatal(err)
+	}
+	if QuotaMemberUses(Clock()).Complete {
+		t.Fatal("an unavailable ledger was treated as complete")
+	}
+}
 
 func TestQuotaMembersKeepKeyAccountModelAndUnknownPrice(t *testing.T) {
 	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)

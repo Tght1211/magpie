@@ -30,7 +30,9 @@ type PoolUses struct {
 func QuotaMemberUses(now time.Time) PoolUses {
 	s := readLogSnapshot()
 	out := quotaMemberUses(now, s.firstOwn, apiPricer(), func(fn func(Record)) { s.visit(now.Add(-30*24*time.Hour), fn) })
-	if info, err := os.Stat(Path()); err != nil || info.Size() > s.bytes {
+	// bytes is compressed index memory, not the ledger's parsed file offset.
+	// Reject a partial read or a file changed since this snapshot was taken.
+	if info, err := os.Stat(Path()); err != nil || s.off != info.Size() || !sameLogInfo(s.info, info) || s.hash == "" {
 		out.Complete = false
 	}
 	return out
