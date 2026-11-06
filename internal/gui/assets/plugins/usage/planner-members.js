@@ -57,7 +57,9 @@ const quotaMembers = (() => {
   }
   function ratio(accounts, demands) {
     const sum=demands.reduce((n,d)=>n+d.rate,0);if(sum<=eps)return null;
-    const capacity=accounts.reduce((n,a)=>n+a.balance,0);let lo=0,hi=capacity/sum;
+    const capacity=accounts.reduce((n,a)=>n+a.balance,0);
+    if(capacity<=eps||demands.some(d=>d.rate>eps&&!accounts.some(a=>a.balance>eps&&d.eligible.includes(a.id))))return 0;
+    let lo=0,hi=capacity/sum;
     for(let i=0;i<20;i++){const mid=(lo+hi)/2,need=demands.map(d=>d.rate*mid),f=allocate(accounts,demands,need);if(f.total+1e-6>=sum*mid)lo=mid;else hi=mid;}
     return lo;
   }
@@ -66,8 +68,8 @@ const quotaMembers = (() => {
     if(!input?.accounts?.length||input.accounts.length>16||!demands||demands.length>64||days>90||demands.some(d=>!Number.isFinite(d.rate)||d.rate<0))return null;
     const aa=input.accounts.map(a=>({...a,balance:a.blocked?0:a.full*a.left/100,cards:cards?(a.cards||[]).map(c=>({...c})):[]}));
     if(aa.some(a=>!(a.full>0&&a.reset>input.now&&a.periodHours>0)))return null;
-    let at=input.now,first=null;const end=at+days*24*hour,points=[],events=[],served=demands.map(()=>0);
-    const snapshot=()=>points.push({at,total:aa.reduce((n,a)=>n+a.balance,0),available:inventory(aa,demands),served:[...served]});snapshot();
+    let at=input.now,first=null;const end=at+days*24*hour,points=[],events=[],intervals=[],served=demands.map(()=>0);
+    const snapshot=()=>points.push({at,total:aa.reduce((n,a)=>n+a.balance,0),served:[...served]});snapshot();
     while(at<=end){
       const eventCount=events.length;
       for(const a of aa)if(a.reset<=at){a.balance=a.blocked?0:a.full;a.reset+=a.periodHours*hour;events.push({at,id:a.id,kind:'reset'});}
@@ -83,14 +85,31 @@ const quotaMembers = (() => {
       let next=Math.min(end,at+hour);
       for(const a of aa){next=Math.min(next,a.reset);for(const c of a.cards){if(c.expiry>at)next=Math.min(next,c.expiry);const t=c.expiry-(a.leadMinutes||30)*60000;if(t>at)next=Math.min(next,t);}}
       // Fair max-min demand ratio, then maximize use of the remaining stock.
-      const scale=(next-at)/hour,targets=demands.map(d=>d.rate*scale),fair=Math.min(scale,ratio(aa,demands)??0);
-      const f=allocate(aa,demands,demands.map(d=>d.rate*fair));
+      const scale=(next-at)/hour,targets=demands.map(d=>d.rate*scale),full=allocate(aa,demands,targets);
+      // A fully covered slot already meets every fair target. Only shortages
+      // need the bounded max-min search; per-member balance curves are not used.
+      const f=full.served.every((v,i)=>v+eps>=targets[i])?full:allocate(aa,demands,demands.map(d=>d.rate*Math.min(scale,ratio(aa,demands)??0)));
       const rest=allocate(aa.map((a,i)=>({...a,balance:Math.max(0,a.balance-f.used[i])})),demands,targets.map((v,i)=>Math.max(0,v-f.served[i])));
       aa.forEach((a,i)=>a.balance=Math.max(0,a.balance-f.used[i]-rest.used[i]));
       demands.forEach((d,i)=>{const n=f.served[i]+rest.served[i];served[i]+=n;if(!first&&n+eps<targets[i])first={at,model:d.model};});
+      // Availability means every compatible demand is covered in this slot,
+      // not that the aggregate account balance is positive.
+      intervals.push({from:at,to:next,available:targets.every((v,i)=>f.served[i]+rest.served[i]+eps>=v)});
       at=next;snapshot();
     }
-    return {points,events,first,served,remaining:points.at(-1).total};
+    return {points,events,intervals,first,served,remaining:points.at(-1).total};
+  }
+  function outlook(run,from,to){
+    if(!run?.intervals?.length||!(to>from)||run.intervals[0].from>from||run.intervals.at(-1).to<to)return null;
+    const spans=[];
+    for(const v of run.intervals){const a=Math.max(from,v.from),b=Math.min(to,v.to);if(b<=a)continue;const last=spans.at(-1);if(last&&last.available===v.available&&last.to===a)last.to=b;else spans.push({from:a,to:b,available:v.available});}
+    const first=run.intervals.find(v=>v.to>from&&!v.available),recovery=first&&run.intervals.find(v=>v.from>=first.to&&v.available);
+    return {spans,first:first?Math.max(from,first.from):null,recovery:recovery?.from??null,end:run.intervals.at(-1).to};
+  }
+  function shortageShift(natural,cards,now){
+    if(!natural||!cards||natural.end!==cards.end||natural.end<=now)return null;
+    if(natural.first===null&&cards.first===null)return null;
+    return {hours:((cards.first??cards.end)-(natural.first??natural.end))/hour,bounded:natural.first===null||cards.first===null};
   }
   function ledger(data) {
     if(!data?.usage)return [];
@@ -102,6 +121,6 @@ const quotaMembers = (() => {
       return {...m,used:known?used:null,lent:known&&m.account?lent:null,borrowed:known&&m.account?borrowed:null,net:known&&m.account?lent-borrowed:null};
     });
   }
-  return {workload,health,allocate,ratio,inventory,project,ledger};
+  return {workload,health,allocate,ratio,inventory,project,outlook,shortageShift,ledger};
 })();
 if(typeof module!=='undefined')module.exports=quotaMembers;

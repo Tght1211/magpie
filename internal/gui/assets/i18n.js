@@ -4,6 +4,7 @@
 // works. {name} slots are filled by t(str, vars).
 const I18N = {
   zh: {
+    "hours": "小时",
     "Card expires in hours": "卡片将在几小时后到期",
     "Reset cards": "重置卡",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex 调度示意：额度目标是建议，并发占满时交给兼容账号，超时按已配置的备用路径处理。Claude 需求单独计算。",
@@ -4707,6 +4708,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "这份报告已经不在了：magpie 只保留最近 5 份。",
   },
   "zh-TW": {
+    "hours": "小時",
     "Card expires in hours": "卡片將在幾小時後到期",
     "Reset cards": "重置卡",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex 調度示意：額度目標是建議，並行額滿時交給相容帳號，逾時按已設定的備用路徑處理。Claude 需求獨立計算。",
@@ -9395,6 +9397,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "這份報告已經不在了：magpie 只保留最近 5 份。",
   },
   ja: {
+    "hours": "時間",
     "Card expires in hours": "カード失効までの時間",
     "Reset cards": "リセットカード",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Codex の配分例：枠の目標は推奨値です。混雑時は互換アカウントへ、タイムアウト時は設定済みの代替先へ移ります。Claude の需要は別に計算します。",
@@ -14085,6 +14088,7 @@ const I18N = {
     "This report is no longer kept: magpie keeps the last 5.": "このレポートはもう残っていません。magpie は最新の 5 件だけを保存します。",
   },
   de: {
+    "hours": "Stunden",
     "Card expires in hours": "Stunden bis Kartenablauf",
     "Reset cards": "Reset-Karten",
     "Illustrative Codex dispatch: the quota target is advisory. Busy accounts yield to compatible accounts; a timeout follows configured fallbacks. Claude demand remains separate.": "Beispiel für Codex: Das Kontingentziel ist eine Empfehlung. Ausgelastete Konten weichen kompatiblen Konten, Zeitüberschreitungen folgen konfigurierten Alternativen. Claude-Bedarf bleibt getrennt.",

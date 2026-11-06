@@ -136,3 +136,11 @@ these are observed state, not bindings created by this deployment. A subsequent
 trace snapshot observed 5 successfully completed calls, none failed and none in
 flight. Screenshots are privacy-masked; local evidence is under
 `/tmp/magpie-dashboard-live/` and `/tmp/magpie-parity-*.log`.
+
+## Later compact layout update
+
+The approved compact account rows and simple two-tab health outlook are recorded
+in [quota dashboard .7](changes/quota-dashboard-7-compact-health.md). This later
+record supersedes the original four-page/grid layout and contains its own final
+validation and deployment outcomes; the historical failed/incomplete runs above
+remain evidence of those earlier attempts.

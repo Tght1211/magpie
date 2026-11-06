@@ -62,6 +62,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   await page.goto('http://magpie.test/?view=quota-planner');
   await page.locator('#qpBody .qp-account').first().waitFor();
   assert.equal(await page.locator('#qpBody .qp-account').count(),4);
+  assert.equal(await page.locator('.qp-account-list tbody tr').count(),4,'each email has one aligned table row');
   assert.equal(await page.locator('.headline h1').count(),1);
   assert(await page.locator('.qp-account-grid').evaluate(e=>e.previousElementSibling?.classList.contains('detail-head')),'account readout is below its heading');
   const summaryBox=await page.locator('.summary').boundingBox(), controlsBox=await page.locator('.forecast-controls').boundingBox();
@@ -69,7 +70,8 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   if(lang==='zh'){
    assert(Math.abs(summaryBox.height-153.6875)<2,'approved battery summary density');
    assert.equal(await page.locator('.summary').evaluate(e=>getComputedStyle(e).padding),'20px');
-   assert(Math.abs((await page.locator('.qp-account-grid').boundingBox()).height-116.5)<2,'approved account readout density');
+   assert.equal(await page.locator('.qp-account-list tbody tr').count(),4);
+   for(const row of await page.locator('.qp-account-list tbody tr').all())assert((await row.boundingBox()).height<=60,'compact aligned account rows');
   }
   await page.locator('[data-qp-unit=cny]').click();
   assert((await page.locator('[data-qp-number=pool-total]').textContent()).includes('¥'));
@@ -120,6 +122,25 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   assert.deepEqual(await page.locator('#qpTabs [data-tab]').evaluateAll(es=>es.map(e=>e.dataset.tab)),['plan','health']);
   await page.locator('#qpTabs [data-tab=health]').click();
   assert.equal(await page.locator('#qpBody img').count(),0);
+  assert.equal(await page.locator('.qp-health-advanced').getAttribute('open'),null,'advanced controls start collapsed');
+  assert.equal(await page.locator('.qp-health-track').count(),1);
+  const oldInspect=await page.locator('#qpHealthTimeValue').textContent();
+  await page.locator('#qpHealthTime').fill('720');
+  assert.notEqual(await page.locator('#qpHealthTimeValue').textContent(),oldInspect);
+  const refill=page.locator('[data-health-event]').first();
+  if(await refill.count()){await refill.click();assert(Math.abs(Number(await page.locator('#qpHealthTime').inputValue())-(Number(await refill.getAttribute('data-health-event'))-now)/60000)<1);}
+  const beforeControls=mutations.length;
+  await page.locator('#qpHealthCards').uncheck();
+  await reach('.qp-health-advanced > summary');await page.locator('.qp-health-advanced > summary').click();
+  await page.locator('#qpHealthLoad').fill('150');
+  await page.locator('#qpHealthLoad').press('Tab');
+  await page.waitForFunction(()=>document.querySelector('[data-qp-number=health-demand]')&& Math.abs(Number(document.querySelector('[data-qp-number=health-demand]').dataset.qpValue)-144)<1e-6);
+  assert.equal(await page.locator('.qp-health-advanced').getAttribute('open'),'');
+  await page.locator('[data-health-load-reset]').click();
+  assert.equal(await page.locator('#qpHealthLoad').inputValue(),'100');
+  assert.equal(mutations.length,beforeControls,'health exploration never writes settings or spends cards');
+  await reach('#qpHealthCards');await page.locator('#qpHealthCards').check();
+
   assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6);
   assert(await page.locator('[data-qp-number=health-ratio]').count());
   assert.equal(await page.locator('[data-bind-member]').count(),4,'ledger shows only Keys with a resolved contributed account');
@@ -132,6 +153,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    assert.equal(await page.locator('[data-bind-member]').count(),3);
    assert.equal(await page.locator('[data-qp-number=health-demand]').getAttribute('data-qp-value'),demandBefore,'hiding unbound Keys preserves their demand');
    assert.equal(bindings.k0,'');
+   assert.equal(await page.locator('.qp-health-advanced').getAttribute('open'),'','expanded state survives refreshed data');
    await reach('[data-bind-unbound]');await page.locator('[data-bind-unbound]').click();await page.getByRole('menuitemradio').first().click();await page.getByRole('menuitemradio').nth(1).click();
    await page.waitForFunction(()=>document.querySelector('[data-bind-member=k0]')?.textContent.includes('a@example.test'));
    assert.equal(bindings.k0,'codex/0');
@@ -152,11 +174,12 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    await page.waitForFunction(()=>document.querySelector('[data-qp-number=health-demand]')?.dataset.qpValue==='');
    assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6,'known supply survives unavailable demand');
    assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),0,'missing data is not an empty chart');
+   assert.equal(await page.locator('.qp-health-track').count(),0,'unknown demand cannot produce a covered timeline');
    planUnavailable=true;await page.locator('#qpReload').click();
    await page.locator('#qpStatus').waitFor();
    assert.equal(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'),'');
    planUnavailable=false;unattributed=false;memberComplete=true;planKnown=true;await page.locator('#qpReload').click();
-   await page.locator('.qp-admission').waitFor();
+   await page.locator('.qp-admission').waitFor({state:'attached'});
   }
   if(lang==='en'){
    extraAccounts=true;await reach('#qpReload');await page.locator('#qpReload').click();
@@ -172,6 +195,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    assert(await page.locator('.total-line.future-line').count()>0,'known account projection remains visible');
    assert((await page.locator('.qp-account').nth(4).textContent()).includes('54%'),'uncalibrated account still shows its measured percentage');
    assert((await page.locator('.qp-account').nth(5).textContent()).includes('No weekly quota window'));
+   assert.equal(await page.locator('.qp-account').nth(5).locator('.qp-account-meter').count(),0,'nonweekly account has no empty progress bar');
    await reach('.method-note summary');await page.locator('.method-note summary').click();
    assert.equal(await page.locator('.method-note .v-pool-table tbody tr').count(),10);
    assert((await page.locator('.method-note .v-caption').last().textContent()).includes('not a guaranteed ranking'));
@@ -179,14 +203,21 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    extraAccounts=false;await page.locator('#qpReload').click();
    await page.waitForFunction(()=>document.querySelectorAll('#qpBody .qp-account').length===4);
    await page.locator('#qpTabs [data-tab=health]').click();
-   await reach('[data-admission=full]');
+
   }
+  await reach('.qp-health-admission > summary');await page.locator('.qp-health-admission > summary').click();
+  await reach('[data-admission=full]');
   for(const [key,value]of Object.entries({full:'200',daily:'20',resetHours:'40',left:'80',cards:'1',expiryHours:'50'}))await page.locator(`[data-admission=${key}]`).fill(value);
   await page.locator('[data-admission=expiryHours]').press('Tab');
   assert(!/NaN|Infinity/.test(await page.locator('#qpBody').innerHTML()));
-  for(const width of [1024,390]){
+  if(process.env.ARTIFACT_DIR&&lang==='zh')await page.screenshot({path:path.join(process.env.ARTIFACT_DIR,`health-advanced-${engine}.png`),fullPage:true});
+  for(const width of [1024,390,320]){
    await page.setViewportSize({width,height:900});
    for(const tab of ['plan','health']) {await page.locator(`#qpTabs [data-tab=${tab}]`).click();assert(await page.locator('#view-quota-planner').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`${lang} ${tab} overflow at ${width}`);}
+  }
+  if(process.env.ARTIFACT_DIR&&lang==='zh'){
+   await page.setViewportSize({width:390,height:900});
+   for(const tab of ['plan','health']){await page.locator(`#qpTabs [data-tab=${tab}]`).click();await page.screenshot({path:path.join(process.env.ARTIFACT_DIR,`${tab}-mobile-${engine}.png`),fullPage:true});}
   }
   if(lang==='en'){
    await page.setViewportSize({width:1440,height:950});

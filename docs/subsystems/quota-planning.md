@@ -216,17 +216,15 @@ substitute. Key budget limits currently make forecasts unknown; the dashboard do
 not pretend that an unknown remaining Key budget is unlimited. Concurrency, cache,
 latency, short windows and actual vendor eligibility still belong to routing.
 
-The new `planner-members.js` is a conditional counterfactual, separate from the
+`planner-members.js` is a conditional counterfactual, separate from the
 production min-cost-flow router. It estimates demand from the last 24 complete,
 priced hourly bins. A bipartite residual-flow network assigns each account's
 inventory once to compatible member/model demand. Maximum common demand scaling
-establishes a max-min fair share, then residual flow uses available surplus. The
-available-balance curves use that common scaling for all members jointly; they
-never allocate the whole pool to each Key independently. The own-account scenario
-uses the same member demand and that one account. The smaller chart shows forward
-cumulative fulfilled demand; actual past use is displayed separately, never
-reconstructed into hypothetical historical savings. Model filtering changes the
-readout, not the competing pool workload.
+establishes a max-min fair share, then residual flow uses available surplus.
+It never promises the entire pool independently to every member. Health records
+aggregate inventory, demand served and coverage intervals; actual past member
+use is displayed separately in the ledger. It does not reconstruct hypothetical
+historical savings from current account ownership.
 
 Health compares natural hourly capacity (`full / periodHours`) with those demands
 using the same compatibility network. Cards do not enter this sustainable ratio.
@@ -299,7 +297,7 @@ estimate. Its observed demand comes from the same calibrated scope; unpriced
 usage within that scope (or with no identifiable account) still prevents a
 forecast. Newly added unused Keys do not erase existing measurements.
 
-Account cards remain visible outside the forecast scope: a measured weekly
+Account rows remain visible outside the forecast scope: a measured weekly
 percentage can show without a dollar estimate, and nonweekly accounts are
 labelled as having no weekly window. Partial-scope charts never use whole-pool
 historical balances or usage as substitutes for scoped data; missing scoped
@@ -307,3 +305,33 @@ history stays blank. The current weekly calibration does not estimate monthly
 Free-account capacity.
 The actual sharing ledger retains its attribution rules and does not assign
 unattributed use to members. Binding failures are visible in the page status.
+
+### Compact account rows and health outlook — 2026-11-07
+
+Account details use aligned email/plan, remaining estimate, measured percentage
+and estimated full-week columns. Phones stack each account within one row.
+Uncalibrated weekly percentages remain visible; unknown and nonweekly accounts
+have explanatory text instead of an empty meter. Estimates are never plan prices.
+
+Health opens with continuous runway, signed finite-card impact on the first
+shortage, and a 24-hour coverage strip. A covered slot means every compatible
+demand is served, not merely that aggregate balance remains positive. Intervals
+are at most one hour and split at events: shortage/recovery times are approximate.
+The first shortage is searched over the full 30-day projection; absence is a
+finite-horizon lower bound, never unlimited availability. Card impact may be
+negative because card use moves natural resets. When both scenarios remain
+covered, no invented benefit is shown.
+
+Time scrubbing and refill links inspect the selected scenario. Advanced forecast
+is collapsed by default and contains the demand slider, natural/card first-gap
+comparison, one selected 24-hour inventory curve and nested admission controls.
+The slider updates the visible projection while dragging; refresh preserves
+scenario settings and expansion state. These controls do not spend cards, write
+settings or change routing. Actual member ledger use never scales with a scenario.
+Partial-scope warnings, unknown-data handling and admission restrictions remain.
+
+Health snapshots retain aggregate inventory and served demand. They do not
+recompute unused per-member balance curves. Fully covered slots skip the max-min
+search; scarce slots retain it and the residual allocation. This keeps slider
+updates practical at the supported account/model limits without changing the
+card executor or routing solver.

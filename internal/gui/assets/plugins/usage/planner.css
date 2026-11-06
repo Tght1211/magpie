@@ -627,3 +627,86 @@
 @media(max-width:700px){.qp-header-tools .qp-page-tools>.muted{display:none}.qp-header-tools .seg button{min-height:24px;padding:2px 8px}#view-quota-planner .qp>.tabs{margin-top:16px}}
 
 .qp .badge {text-transform:none;letter-spacing:0;font-weight:500}
+/* Approved account rows and health action board; retain native page tokens. */
+.qp .qp-account-list {padding:0 20px 12px}
+.qp .qp-account-list table {width:100%;border-collapse:collapse;table-layout:fixed}
+.qp .qp-account-list th {text-align:left;font-size:11px;font-weight:400;color:var(--muted);background:var(--card-2);padding:8px 12px}
+.qp .qp-account-list td {padding:8px 12px;height:56px;vertical-align:middle;border-bottom:1px solid var(--line-2)}
+.qp .qp-account-list td:first-child {padding-left:0}
+.qp .qp-account-list tr:last-child td {border-bottom:0}
+.qp .qp-account-list th:nth-child(2),.qp .qp-account-list th:last-child,.qp .qp-account-money,.qp .qp-account-full {text-align:right;white-space:nowrap}
+.qp .qp-account-email {display:flex;align-items:center;gap:8px;line-height:20px;min-width:0;overflow-wrap:anywhere}
+.qp .qp-account-email .pii {overflow-wrap:anywhere;min-width:0}
+.qp .qp-account-email .swatch {flex:none}
+.qp .qp-account-plan {font-size:11px;line-height:16px;color:var(--muted);margin:4px 0 0 16px}
+.qp .qp-account-mobile {display:none}
+.qp .qp-account-money {font-weight:500}
+.qp .qp-account-full,.qp .qp-account-unknown {color:var(--muted);font-size:11px}
+.qp .qp-account-unknown {display:block;text-align:right}
+.qp .qp-account-balance {display:grid;grid-template-columns:minmax(0,1fr) 36px;align-items:center;gap:12px;font-size:12px;text-align:right}
+.qp .qp-account-meter {height:4px;border-radius:2px;background:var(--pill);overflow:hidden}
+.qp .qp-account-meter i {display:block;height:100%}
+.qp .qp-account-list tbody tr:hover {background:var(--card-2)}
+.qp .qp-health-body {padding:8px 20px 16px}
+.qp .qp-health-status {color:var(--muted);font-size:11px}
+.qp .qp-health-status.warn {color:var(--amber)}
+.qp .qp-health-headline {font-size:24px;font-weight:500;line-height:1.4;margin:8px 0}
+.qp .qp-health-subtitle {color:var(--fg-2);margin:0}
+.qp .qp-health-numbers {display:flex;gap:40px;flex-wrap:wrap;padding:20px 0}
+.qp .qp-health-numbers small {display:block;color:var(--muted);font-size:12px}
+.qp .qp-health-numbers strong {display:block;font-size:28px;font-weight:500;line-height:1.5}
+.qp .qp-health-numbers .qp-health-shift {font-size:20px;line-height:2.1}
+.qp .qp-health-controls {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding:16px 0}
+.qp .qp-health-controls b {font-weight:500}
+.qp .qp-health-track-wrap {position:relative}
+.qp .qp-health-track {display:flex;height:44px;gap:2px;border-radius:4px;overflow:hidden;cursor:crosshair}
+.qp .qp-health-segment {display:flex;align-items:center;justify-content:center;min-width:0;white-space:nowrap;background:var(--green-soft);color:var(--green);font-size:11px}
+.qp .qp-health-segment.gap,.qp .qp-health-key i.gap {background:repeating-linear-gradient(135deg,var(--amber-soft),var(--amber-soft) 5px,var(--card) 5px,var(--card) 7px);color:var(--amber)}
+.qp .qp-health-cursor {position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--fg);pointer-events:none}
+.qp .qp-health-cursor:after {content:'';position:absolute;left:-2px;top:-2px;width:5px;height:5px;border-radius:50%;background:var(--fg)}
+.qp .qp-health-times,.qp .qp-health-readout {display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-top:8px}
+.qp .qp-health-readout {flex-wrap:wrap;align-items:center;margin-top:16px;min-height:24px}
+.qp .qp-health-readout output {color:var(--fg-2)}
+.qp #qpHealthTime,.qp #qpHealthLoad {display:block;width:100%;height:24px;margin:8px 0;accent-color:var(--fg)}
+.qp .qp-health-key {display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:var(--muted);margin-top:12px}
+.qp .qp-health-key span {display:flex;align-items:center;gap:6px}
+.qp .qp-health-key i {width:10px;height:10px;background:var(--green-soft);border-radius:2px}
+.qp .qp-health-events {display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:8px}
+.qp .qp-health-events button,.qp [data-health-load-reset] {font-size:11px;min-height:32px;color:var(--muted);text-decoration:underline;text-underline-offset:4px}
+.qp .qp-health-action {display:flex;gap:16px;background:var(--card-2);border-radius:8px;padding:16px;margin-top:16px;color:var(--fg-2)}
+.qp .qp-health-action b {font-weight:500;flex:none;color:var(--fg)}
+.qp .qp-health-advanced,.qp .qp-health-admission {margin-top:20px;padding-top:12px;border-top:1px solid var(--line)}
+.qp .qp-health-advanced>summary,.qp .qp-health-admission>summary {min-height:36px;align-content:center;font-size:12px;color:var(--muted);cursor:pointer}
+.qp .qp-health-advanced>summary .qp-health-load-value {float:right}
+.qp .qp-health-load {display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px}
+.qp .qp-health-load button {margin-left:auto}
+.qp .qp-health-load input {flex-basis:100%}
+.qp .qp-health-disclaimer {font-size:11px;color:var(--muted);margin:0 0 12px}
+.qp .qp-health-compare {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0;font-size:12px;color:var(--muted)}
+.qp .qp-health-compare b {display:block;margin-top:4px;color:var(--fg);font-size:14px;font-weight:500}
+.qp .qp-health-analysis .analysis-summary {padding:16px 0}
+.qp .qp-health-analysis .estimate-note {padding:0 0 12px}
+.qp .qp-health-analysis .metric-grid {grid-template-columns:repeat(3,minmax(0,1fr))}
+.qp .qp-health-analysis .metric-grid b {font-size:24px}
+@media(max-width:700px){
+.qp .qp-account-list {padding:0 12px 12px}
+.qp .qp-account-list table,.qp .qp-account-list tbody {display:block}
+.qp .qp-account-list colgroup,.qp .qp-account-list thead {display:none}
+.qp .qp-account-list tr {display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px 16px;padding:12px 0;border-bottom:1px solid var(--line-2)}
+.qp .qp-account-list tbody tr:last-child {border:0}
+.qp .qp-account-list td {padding:0;height:auto;border:0}
+.qp .qp-account-list td:first-child {grid-column:1/-1}
+.qp .qp-account-list td:last-child {display:none}
+.qp .qp-account-mobile {display:inline}
+.qp .qp-account-money {text-align:left}
+.qp .qp-health-body {padding:8px 12px 12px}
+.qp .qp-health-headline {font-size:20px}
+.qp .qp-health-numbers {gap:24px}
+.qp .qp-health-action {display:block}
+.qp .qp-health-action b {display:block;margin-bottom:4px}
+.qp .qp-health-controls .check {min-height:44px}
+.qp .qp-health-times {font-size:11px}
+.qp .qp-health-times span {max-width:34%}
+.qp .qp-health-advanced>summary,.qp .qp-health-admission>summary {min-height:44px}
+.qp .qp-health-analysis .metric-grid {grid-template-columns:1fr;gap:16px}
+}

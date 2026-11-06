@@ -74,3 +74,35 @@ test('new unused Keys and uncalibrated accounts preserve only the measured scope
  assert.equal(K.health(data,plan,now+121000).supply,null);
  assert.equal(K.health(data,{...plan,input:{...plan.input,accounts:[]}},now).supply,null);
 });
+
+test('health timeline reports compatible shortages despite positive aggregate balance',()=>{
+ const p=K.project({now,accounts:[account('a',{left:0,reset:now+2*h}),account('b')]},[{rate:10,model:'codex/a',eligible:['a']}],1,false);
+ assert(p.points[0].total>0);
+ const o=K.outlook(p,now,now+24*h);
+ assert.equal(o.first,now);assert.equal(o.recovery,now+2*h);
+ assert.deepEqual(o.spans.map(v=>[v.from-now,v.to-now,v.available]),[[0,2*h,false],[2*h,12*h,true],[12*h,24*h,false]]);
+ const clipped=K.outlook(p,now+h/2,now+3*h);
+ assert.deepEqual(clipped.spans.map(v=>[v.from-now,v.to-now,v.available]),[[h/2,2*h,false],[2*h,3*h,true]]);
+ assert.equal(K.outlook(p,now-h,now+h),null);assert.equal(K.outlook(p,now,now+25*h),null);assert.equal(K.outlook(null,now,now+h),null);
+});
+test('health runway searches beyond the displayed day and preserves finite horizons',()=>{
+ const p=K.project({now,accounts:[account('a')]},[{rate:2,model:'codex/a',eligible:['a']}],3,false);
+ const o=K.outlook(p,now,now+24*h);assert.equal(o.first,now+50*h);assert.equal(o.end,now+72*h);assert.equal(o.spans.length,1);assert(o.spans[0].available);
+ const idle=K.outlook(K.project({now,accounts:[account('a')]},[],1,true),now,now+24*h);assert.equal(idle.first,null);assert.equal(idle.recovery,null);
+});
+test('card effect preserves earlier shortages and lower bounds instead of invented savings',()=>{
+ const a={first:now+10*h,end:now+30*h},b={first:now+20*h,end:now+30*h},none={first:null,end:now+30*h};
+ assert.deepEqual(K.shortageShift(a,b,now),{hours:10,bounded:false});assert.deepEqual(K.shortageShift(b,a,now),{hours:-10,bounded:false});
+ assert.deepEqual(K.shortageShift(a,none,now),{hours:20,bounded:true});assert.deepEqual(K.shortageShift(none,a,now),{hours:-20,bounded:true});
+ assert.equal(K.shortageShift(none,none,now),null);assert.equal(K.shortageShift(null,b,now),null);assert.equal(K.shortageShift(a,{...b,end:now+31*h},now),null);
+});
+
+test('health projections conserve full coverage and fair shortage allocations',()=>{
+ const accounts=Array.from({length:16},(_,i)=>account('a'+i,{full:200,left:60,reset:now+(10+i)*h}));
+ const demands=Array.from({length:64},(_,i)=>({rate:.2,model:'codex/m'+i,eligible:accounts.map(a=>a.id)}));
+ const run=K.project({now,accounts},demands,1,false);
+ assert.equal(run.first,null);for(const n of run.served)assert(Math.abs(n-4.8)<1e-6);
+ assert(Number.isFinite(run.remaining)&&run.remaining>=0&&run.remaining<=3200);
+ const scarce=K.project({now,accounts:[account('a',{full:10}),account('b',{full:10})]},[{rate:15,model:'codex/a',eligible:['a']},{rate:15,model:'codex/b',eligible:['a','b']}],1/24,false);
+ assert.equal(scarce.first.at,now);assert(Math.abs(scarce.served[0]-10)<1e-5);assert(Math.abs(scarce.served[1]-10)<1e-5);assert(scarce.remaining<1e-6);
+});

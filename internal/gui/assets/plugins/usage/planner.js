@@ -19,7 +19,7 @@ function quotaPlannerController(main) {
   const state = { explorer: {scale:'week',start:Date.now()-86400000,rescue:true,data:null,busy:false}, tab: 'plan', composition:'accounts', forecastMode:'recommended', healthLoad:100, unit:null, members:null, admission:{left:100,cards:0}, auto:true, policy: 'harvest', demand: null, optimization: null, scenarioOptimization: null, accounts: [], errors: [], loaded: false };
   const headerTools=main.querySelector('#qpHeader'),headerHost=document.querySelector('body > header.top');
   if(headerHost){headerTools.className='qp qp-header-tools';headerHost.append(headerTools);}
-  let timelineGeneration=0, expiredPace=false, resizeFrame, drag=null;
+  let timelineGeneration=0, expiredPace=false, resizeFrame, healthFrame, drag=null;
   let generation = 0, pending = false, timer, paceTimer, clockTimer, numberFrame, deferredDraw = false;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const shown = () => !main.hidden && !document.hidden;
@@ -29,6 +29,8 @@ function quotaPlannerController(main) {
     const restoreChartFocus=box.contains(document.activeElement)&&document.activeElement.matches('[data-qp-explore]');
     if (preserveInput && box.contains(document.activeElement) && document.activeElement.matches('input')) { deferredDraw = true; return; }
     deferredDraw = false;
+    const advanced=box.querySelector('.qp-health-advanced'),admission=box.querySelector('.qp-health-admission');
+    if(advanced)state.healthAdvanced=advanced.open;if(admission)state.healthAdmission=admission.open;
     const previous = new Map([...box.querySelectorAll('[data-qp-number]')].filter(e => e.dataset.qpValue !== '').map(e => [e.dataset.qpNumber, Number(e.dataset.qpCurrent ?? e.dataset.qpValue)]));
     cancelAnimationFrame(numberFrame);
     const top = main.scrollTop;
@@ -85,7 +87,7 @@ function quotaPlannerController(main) {
     draw(true);
     if(state.auto)paceTimer = setTimeout(refreshPace,15000);
   }
-  const leave = () => { headerTools.hidden=true;drag=null;generation++; timelineGeneration++; scenarioGeneration++; pending = false; clearTimeout(timer); clearTimeout(paceTimer); clearInterval(clockTimer); cancelAnimationFrame(numberFrame); };
+  const leave = () => { headerTools.hidden=true;drag=null;generation++; timelineGeneration++; scenarioGeneration++; pending = false; clearTimeout(timer); clearTimeout(paceTimer); clearInterval(clockTimer); cancelAnimationFrame(numberFrame); cancelAnimationFrame(healthFrame); };
   async function load(asked = false) {
     if (!shown() || pending) return;
     pending = true;
@@ -141,8 +143,12 @@ function quotaPlannerController(main) {
     try { const result=await api('usage/quota-plan/demo',input);if(seq===scenarioGeneration){state.scenarioOptimization={input,result,demandKnown:true,coverage:state.optimization.coverage,total:state.optimization.total};draw();} } catch { if(seq===scenarioGeneration)draw(); }
   }
   function click(e) {
+    const track=e.target.closest('.qp-health-track');
+    if(track&&state.healthData){const rect=track.getBoundingClientRect();quotaDashboard.inspectHealth(box,state,state.healthData.from+(e.clientX-rect.left)/rect.width*86400000);return;}
     const b = e.target.closest('button');
     if (!b) return;
+    if(b.dataset.healthEvent){quotaDashboard.inspectHealth(box,state,Number(b.dataset.healthEvent));return;}
+    if(b.hasAttribute('data-health-load-reset')){cancelAnimationFrame(healthFrame);state.healthLoad=100;draw();return;}
     if(b.dataset.qpUnit){state.unit=b.dataset.qpUnit;draw();return;}
     if(b.hasAttribute('data-qp-theme')){const dark=document.documentElement.dataset.theme==='dark'||(!document.documentElement.dataset.theme&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'light':'dark';draw();return;}
     if(b.dataset.forecastMode){state.forecastMode=b.dataset.forecastMode;state.demand=null;draw();return;}
@@ -171,14 +177,16 @@ function quotaPlannerController(main) {
   }
   function input(e) {
     if(e.target.id==='qpNavigator'){state.explorer.start=Number(e.target.value);state.inspectAt=null;state.explorer.data=null;quotaDashboard.updateChart(box,state);return;}
-    if(e.target.id==='qpHealthLoad'){e.target.nextElementSibling.textContent=e.target.value+'%';return;}
+    if(e.target.id==='qpHealthTime'){quotaDashboard.inspectHealth(box,state,state.healthData.from+Number(e.target.value)*60000);return;}
+    if(e.target.id==='qpHealthLoad'){state.healthLoad=Number(e.target.value);cancelAnimationFrame(healthFrame);healthFrame=requestAnimationFrame(()=>{if(shown()&&state.tab==='health')quotaDashboard.updateHealth(box,state);});return;}
     if (e.target.id === 'qpDemand') return;
 
   }
   function change(e) {
     if(e.target.id==='qpAuto'){state.auto=e.target.checked;clearTimeout(timer);clearTimeout(paceTimer);if(state.auto)load();draw();return;}
     if(e.target.id==='qpCards'){state.explorer.rescue=e.target.checked;draw();return;}
-    if(e.target.id==='qpHealthLoad'){state.healthLoad=Number(e.target.value);draw();return;}
+    if(e.target.id==='qpHealthCards'){state.healthCards=e.target.checked;draw();return;}
+    if(e.target.id==='qpHealthLoad'){cancelAnimationFrame(healthFrame);state.healthLoad=Number(e.target.value);draw();return;}
     if(e.target.dataset.admissionSupport){state.admission.support=[...box.querySelectorAll('[data-admission-support]:checked')].map(e=>e.dataset.admissionSupport);draw();return;}
     if(e.target.id==='qpNavigator'){loadTimeline();draw();return;}
     if(e.target.id==='qpDate'){const date=new Date(e.target.value+'T00:00:00');if(Number.isFinite(+date))moveTimeline(+date);return;}
