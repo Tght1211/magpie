@@ -39,3 +39,20 @@ are not counted as passes. After removing obsolete temporary binaries and
 regenerable cross-platform compiler objects, the library retry exited normally
 and all remaining packages passed. Logs of the interrupted runs remain alongside
 the final resume log; only completed successful package runs enter the result.
+
+## Production deployment
+
+Deployed `magpie 0.1.2995-quota-dashboard.5` from `25bd4408` on 2026-11-06.
+Binary SHA-256: `00efeb4dd4243bca7711b66594d736a277c074de2cec4faaf9c51fa166d1f5f0`.
+
+Backup: `/var/backups/magpie-custom/20261106T065842Z-quota-dashboard.5`. The server retained all 54 prior quota identities,
+unchanged settings/provider/Key configuration and the complete pre-switch usage
+ledger prefix. Gateway and planning APIs passed post-start checks. The
+backup/switch/check sequence took 19.19 seconds, not measured request downtime.
+The gateway remained busy during the idle preference window; the user's prior
+short-restart authorization was used.
+
+Post-deployment Chromium and WebKit passed both tabs at 1440/390 pixels, live
+refresh, populated health metrics and the forecast curve. The API retained all
+eight Keys; the ledger showed exactly the four bound Keys. Production bindings
+were not changed by verification. Screenshots were masked for private identities.
