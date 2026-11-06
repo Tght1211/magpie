@@ -2,7 +2,12 @@
 // kernel adds them to i18n.js's (magpie.strings).
 magpie.strings({
   zh: {
+    "Forecast covers {known} of {total} accounts. Accounts without calibrated weekly capacity are excluded, not counted as zero.": "预测覆盖 {total} 个账号中的 {known} 个；未校准周额度的账号暂不参与计算，不代表额度为零。",
+    "Calibrated account subtotal": "已校准账号小计",
+    "No weekly quota window": "无周额度窗口",
+    "Partial account scope · not a whole-pool health verdict": "仅分析部分账号 · 不代表整个号池的健康度",
     "Bounded search · not a guaranteed optimum": "限时搜索 · 不保证全局最优",
+
     "Recurring demand exceeds natural supply.": "持续消耗超过自然补充能力。",
     "Aggregate capacity ratio": "总供需比",
     "Provider-level estimate": "按渠道汇总估算",
@@ -534,7 +539,12 @@ magpie.strings({
     "Target pace": "目标",
   },
   "zh-TW": {
+    "Forecast covers {known} of {total} accounts. Accounts without calibrated weekly capacity are excluded, not counted as zero.": "預測涵蓋 {total} 個帳號中的 {known} 個；未校準週額度的帳號暫不參與計算，不代表額度為零。",
+    "Calibrated account subtotal": "已校準帳號小計",
+    "No weekly quota window": "無週額度視窗",
+    "Partial account scope · not a whole-pool health verdict": "僅分析部分帳號 · 不代表整個號池的健康度",
     "Bounded search · not a guaranteed optimum": "限時搜尋 · 不保證全域最佳",
+
     "Recurring demand exceeds natural supply.": "持續消耗超過自然補充能力。",
     "Aggregate capacity ratio": "總供需比",
     "Provider-level estimate": "依供應商彙總估算",
@@ -1066,7 +1076,12 @@ magpie.strings({
     "Target pace": "目標",
   },
   ja: {
+    "Forecast covers {known} of {total} accounts. Accounts without calibrated weekly capacity are excluded, not counted as zero.": "全 {total} アカウント中 {known} 件が予測対象です。週容量が未較正のアカウントは除外され、ゼロとは扱いません。",
+    "Calibrated account subtotal": "較正済みアカウントの小計",
+    "No weekly quota window": "週単位の枠なし",
+    "Partial account scope · not a whole-pool health verdict": "一部アカウントの分析 · プール全体の健全性評価ではありません",
     "Bounded search · not a guaranteed optimum": "制限付き探索 · 最適解の保証なし",
+
     "Recurring demand exceeds natural supply.": "継続的な需要が自然補充量を超えています。",
     "Aggregate capacity ratio": "総供給・需要比",
     "Provider-level estimate": "プロバイダー単位の推定",
@@ -1598,7 +1613,12 @@ magpie.strings({
     "Target pace": "目標",
   },
   de: {
+    "Forecast covers {known} of {total} accounts. Accounts without calibrated weekly capacity are excluded, not counted as zero.": "Prognose für {known} von {total} Konten. Konten ohne kalibrierte Wochenkapazität sind ausgeschlossen, nicht als null gezählt.",
+    "Calibrated account subtotal": "Zwischensumme kalibrierter Konten",
+    "No weekly quota window": "Kein wöchentliches Kontingent",
+    "Partial account scope · not a whole-pool health verdict": "Teilmenge der Konten · keine Bewertung des gesamten Pools",
     "Bounded search · not a guaranteed optimum": "Begrenzte Suche · kein garantiertes Optimum",
+
     "Recurring demand exceeds natural supply.": "Der laufende Bedarf übersteigt die natürliche Nachfüllung.",
     "Aggregate capacity ratio": "Gesamtverhältnis von Kapazität zu Bedarf",
     "Provider-level estimate": "Schätzung je Anbieter",

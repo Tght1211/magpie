@@ -290,7 +290,20 @@ Otherwise, a fresh, complete provider-level plan may supply an explicitly labell
 aggregate scenario, including all measured use of the calibrated pool regardless
 of member ownership. Provider groups remain separate. This aggregate scenario does
 not claim per-member/model availability and cannot produce admission estimates.
-Unknown aggregate demand or incomplete capacity leaves the forecast unavailable;
-the page explains this instead of rendering empty axes. Known supply still shows.
+Unknown aggregate demand leaves the forecast unavailable; the page explains
+this instead of rendering empty axes. Known supply still shows. When extra
+accounts lack weekly calibration, known accounts retain their balance subtotal,
+pace and provider-level health projection with an explicit coverage notice.
+Partial coverage cannot produce a whole-pool health verdict or member admission
+estimate. Its observed demand comes from the same calibrated scope; unpriced
+usage within that scope (or with no identifiable account) still prevents a
+forecast. Newly added unused Keys do not erase existing measurements.
+
+Account cards remain visible outside the forecast scope: a measured weekly
+percentage can show without a dollar estimate, and nonweekly accounts are
+labelled as having no weekly window. Partial-scope charts never use whole-pool
+historical balances or usage as substitutes for scoped data; missing scoped
+history stays blank. The current weekly calibration does not estimate monthly
+Free-account capacity.
 The actual sharing ledger retains its attribution rules and does not assign
 unattributed use to members. Binding failures are visible in the page status.

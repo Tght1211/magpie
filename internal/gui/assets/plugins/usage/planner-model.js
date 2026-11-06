@@ -33,7 +33,7 @@ const quotaPlannerModel = (() => {
       if (valid && Number.isFinite(read) && read <= now && (!last || read > time(last.at))) points.push({ at: new Date(read).toISOString(), left, resetsAt: w.resetsAt });
       const blocked = !!q.held || !!w?.heldBy;
       return { id: JSON.stringify([q.provider, q.user?.toLowerCase()]), index, user: q.user, alias: q.alias, holds: w?.holds, holdsWhy: w?.holdsWhy, provider: q.provider,
-        plan: q.plan, left, reset, read, known, blocked, expiry, cards, count: q.resets?.count ?? null,
+        plan: q.plan, weekly:!!w, left, reset, read, known, blocked, expiry, cards, count: q.resets?.count ?? null,
         points, error: !!q.error, heldBy: w?.heldBy || '', now };
     });
   }

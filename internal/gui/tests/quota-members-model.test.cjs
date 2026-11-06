@@ -53,11 +53,24 @@ test('health preserves measured supply and separates aggregate from member capac
  assert.deepEqual(out.work.map(d=>d.eligible),[['a'],['b']]);
  assert.equal(K.health(data,{...plan,demandKnown:false},now).work,null);
  assert.equal(K.health(data,{...plan,demandKnown:false},now).supply,out.supply);
- assert.equal(K.health(data,{...plan,total:3},now).supply,null);
+ const partial=K.health(data,{...plan,total:3},now);
+ assert.equal(partial.supply,out.supply);assert.equal(partial.demand,out.demand);assert.equal(partial.partial,true);assert.equal(partial.complete,false);assert.equal(partial.modelAware,false);
  assert.equal(K.health(data,plan,now+121000).work,null);
  assert.equal(K.health(data,{...plan,input:{...plan.input,demands:{codex:2}}},now).work,null);
  data.usage.rows[0].unpriced=1;assert.equal(K.health(data,plan,now).work,null);data.usage.rows[0].unpriced=0;
  data.members=[{id:'k',eligible:{'codex/m':['a']}}];data.usage.rows[0].key='k';
  const member=K.health(data,plan,now);assert.equal(member.modelAware,true);assert.equal(member.demand,48);assert.deepEqual(member.work[0].eligible,['a']);
  data.usage.rows=[];assert.equal(K.health(data,plan,now).demand,0);
+});
+
+test('new unused Keys and uncalibrated accounts preserve only the measured scope',()=>{
+ const plan={input:{now,accounts:[account('a')],demands:{codex:2}},total:4,coverage:1,demandKnown:true};
+ const data={usage:{complete:true,from:now-48*h,to:now,rows:[{at:now-h,key:'k',account:'a',model:'codex/m',cost:48,tokens:100}]},members:[{id:'k',eligible:{'codex/m':['a']}},{id:'new',restricted:true}]};
+ const out=K.health(data,plan,now);assert.equal(out.demand,48);assert(Math.abs(out.supply-100/7)<1e-9);assert.equal(out.modelAware,false);assert(out.partial);
+ data.usage.rows.push({at:now-h,key:'new',account:'unmatched',model:'codex/m',unpriced:1});
+ assert.equal(K.health(data,plan,now).demand,48,'unknown costs outside the calibrated scope cannot erase its independently priced demand');
+ data.usage.rows[1].account='a';assert.equal(K.health(data,plan,now).demand,null);
+ data.usage.rows[1].account='';assert.equal(K.health(data,plan,now).demand,null);
+ assert.equal(K.health(data,plan,now+121000).supply,null);
+ assert.equal(K.health(data,{...plan,input:{...plan.input,accounts:[]}},now).supply,null);
 });

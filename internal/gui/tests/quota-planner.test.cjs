@@ -25,13 +25,13 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    const target=page.locator(selector);
    await page.mouse.move(1200,500);
    for(let i=0;i<12;i++){
-    const r=await target.boundingBox();if(r&&r.y>=80&&r.y+r.height<=850)return;
+    const r=await target.boundingBox();if(r&&r.y>=80&&r.y+r.height<=page.viewportSize().height-20)return;
     await page.mouse.wheel(0,r&&r.y<80?-500:500);
     await page.waitForTimeout(80);
    }
    assert.fail('control could not be reached by scrolling: '+selector);
   }
-  const errors=[],mutations=[]; const bindings={};let noBindings=false;let memberComplete=true,unattributed=false,planKnown=true,planUnavailable=false,bindingError=false;let mode='ok', delayed=null, qReads=0, paceMode='normal';
+  const errors=[],mutations=[]; const bindings={};let noBindings=false,extraAccounts=false;let memberComplete=true,unattributed=false,planKnown=true,planUnavailable=false,bindingError=false;let mode='ok', delayed=null, qReads=0, paceMode='normal';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const req=route.request(), u=new URL(req.url()), json=x=>route.fulfill({json:x});
@@ -40,13 +40,13 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    if(u.pathname==='/wails/runtime.js')return route.fulfill({contentType:'text/javascript',body:'export const Window={};'});
    if(u.pathname==='/api/state')return json({agents:[],profiles:[],settings:{lang,theme},fx:{rate:7}});
    if(u.pathname==='/api/providers')return json({providers:[],presets:[],excluded:[],models:[],gateway:{running:false}});
-   if(u.pathname==='/api/usage/quotas') {if(u.searchParams.has('asked'))assert.equal(u.searchParams.get('all'),'1','manual planner refresh includes every saved Claude account');qReads++;if(mode==='delay') await new Promise(r=>delayed=r);if(mode==='error')return route.fulfill({status:503,body:'unavailable'});return json(mode==='empty'?[]:accounts);}
+   if(u.pathname==='/api/usage/quotas') {if(u.searchParams.has('asked'))assert.equal(u.searchParams.get('all'),'1','manual planner refresh includes every saved Claude account');qReads++;if(mode==='delay') await new Promise(r=>delayed=r);if(mode==='error')return route.fulfill({status:503,body:'unavailable'});return json(mode==='empty'?[]:extraAccounts?[...accounts,quota('new@example.test',46,120,200),...['free-a@example.test','free-b@example.test'].map(user=>({provider:'codex',user,plan:'free',readAt:at(0),windows:[{name:'30 days',used:10,resetsAt:at(600)}]}))]:accounts);}
    if(u.pathname==='/api/usage/quota-pool')return json(paceMode==='normal'?poolData:poolData.map(a=>({...a,hourly:a.hourly.map(p=>({...p,cost:0,to:paceMode==='stale'?at(-10):p.to}))})));
    if(u.pathname==='/api/usage/quota-plan'&&u.searchParams.get('history')==='1'){
     const from=+u.searchParams.get('from'),to=+u.searchParams.get('to');return json({earliest:now-30*86400000,bins:[{from,to:Math.min(now,to),actual:12,predicted:10,known:to<=now}],observations:[],forecasts:[]});
    }
    if(u.pathname==='/api/usage/quota-plan'&&planUnavailable)return route.fulfill({status:503,body:'unavailable'});
-   if(u.pathname==='/api/usage/quota-plan')return json({input:planInput,result:solveFixture(planInput),demandKnown:planKnown,total:4,coverage:planKnown?4:0});
+   if(u.pathname==='/api/usage/quota-plan')return json({input:planInput,result:solveFixture(planInput),demandKnown:planKnown,total:extraAccounts?7:4,coverage:planKnown?4:0});
    if(u.pathname==='/api/usage/quota-plan/demo')return json(solveFixture(req.postDataJSON()));
    if(u.pathname==='/api/usage/quotas/history')return json(history);
    if(u.pathname==='/api/usage/quota-members'&&req.method()==='POST'){if(bindingError)return route.fulfill({status:409,body:'duplicate'});const b=req.postDataJSON();bindings[b.key]=b.account;return json({ok:true});}
@@ -158,7 +158,29 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    planUnavailable=false;unattributed=false;memberComplete=true;planKnown=true;await page.locator('#qpReload').click();
    await page.locator('.qp-admission').waitFor();
   }
-  if(lang==='en')await reach('[data-admission=full]');
+  if(lang==='en'){
+   extraAccounts=true;await reach('#qpReload');await page.locator('#qpReload').click();
+   await page.waitForFunction(()=>!document.querySelector('#qpReload')?.disabled);
+   assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6,'new accounts preserve calibrated supply');
+   assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),1,'known account forecast survives incomplete pool coverage');
+   assert.equal(await page.locator('.qp-admission').count(),0,'partial scope cannot authorize pool admission');
+   await page.locator('#qpTabs [data-tab=plan]').click();
+   assert.equal(await page.locator('#qpBody .qp-account').count(),7);
+   assert.equal(await page.locator('.series-legend > span').count(),4,'legend lists only accounts included in the projection');
+   assert((await page.locator('.big-value').textContent()).includes('4 accounts'),'subtotal names the calibrated scope');
+   assert.notEqual(await page.locator('[data-qp-number=pool-total]').getAttribute('data-qp-value'),'','known balance remains visible');
+   assert(await page.locator('.total-line.future-line').count()>0,'known account projection remains visible');
+   assert((await page.locator('.qp-account').nth(4).textContent()).includes('54%'),'uncalibrated account still shows its measured percentage');
+   assert((await page.locator('.qp-account').nth(5).textContent()).includes('No weekly quota window'));
+   await reach('.method-note summary');await page.locator('.method-note summary').click();
+   assert.equal(await page.locator('.method-note .v-pool-table tbody tr').count(),10);
+   assert((await page.locator('.method-note .v-caption').last().textContent()).includes('not a guaranteed ranking'));
+   await page.locator('.method-note summary').click();await reach('#qpReload');
+   extraAccounts=false;await page.locator('#qpReload').click();
+   await page.waitForFunction(()=>document.querySelectorAll('#qpBody .qp-account').length===4);
+   await page.locator('#qpTabs [data-tab=health]').click();
+   await reach('[data-admission=full]');
+  }
   for(const [key,value]of Object.entries({full:'200',daily:'20',resetHours:'40',left:'80',cards:'1',expiryHours:'50'}))await page.locator(`[data-admission=${key}]`).fill(value);
   await page.locator('[data-admission=expiryHours]').press('Tab');
   assert(!/NaN|Infinity/.test(await page.locator('#qpBody').innerHTML()));

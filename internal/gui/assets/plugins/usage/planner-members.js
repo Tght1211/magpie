@@ -21,18 +21,20 @@ const quotaMembers = (() => {
   function health(data, plan, now) {
     const input=plan?.input, accounts=input?.accounts||[], base=workload(data,now);
     const fresh=input&&now>=input.now&&now-input.now<=120000;
-    const complete=fresh&&plan.total>0&&accounts.length===plan.total&&accounts.every(a=>Number.isFinite(a.full)&&a.full>0&&Number.isFinite(a.periodHours)&&a.periodHours>0);
-    const supply=complete?accounts.reduce((n,a)=>n+(a.blocked?0:a.full/a.periodHours)*24,0):null;
-    let work=base, modelAware=base!==null;
+    const available=fresh&&accounts.length>0&&accounts.length<=plan.total&&accounts.every(a=>Number.isFinite(a.full)&&a.full>0&&Number.isFinite(a.periodHours)&&a.periodHours>0);
+    const complete=available&&accounts.length===plan.total,partial=available&&!complete;
+    const supply=available?accounts.reduce((n,a)=>n+(a.blocked?0:a.full/a.periodHours)*24,0):null;
+    let modelAware=complete&&base!==null,work=modelAware?base:null;
+    const scope=new Set(accounts.map(a=>a.id));
     const end=Math.floor(now/hour)*hour;
-    const unpriced=data?.usage?.rows.some(r=>r.at>=end-24*hour&&r.at<end&&r.unpriced>0);
-    if(!modelAware&&!unpriced&&complete&&plan.demandKnown&&plan.coverage===plan.total){
+    const unpriced=data?.usage?.rows.some(r=>r.at>=end-24*hour&&r.at<end&&r.unpriced>0&&(!r.account||scope.has(r.account)));
+    if(!modelAware&&!unpriced&&available&&plan.demandKnown&&plan.coverage===accounts.length){
       const groups=[...new Set(accounts.map(a=>a.group||''))],demands=input.demands;
       if(demands&&groups.every(g=>Number.isFinite(demands[g])&&demands[g]>=0)&&Object.keys(demands).every(g=>groups.includes(g))){
         work=groups.map(g=>({key:'',model:g,rate:demands[g],eligible:accounts.filter(a=>(a.group||'')===g).map(a=>a.id)}));
       }
     }
-    return {work:complete?work:null,modelAware,supply,demand:work===null?null:work.reduce((n,d)=>n+d.rate*24,0),complete};
+    return {work:available?work:null,modelAware,supply,demand:work===null?null:work.reduce((n,d)=>n+d.rate*24,0),complete,partial};
   }
   // Small bipartite residual network: demand nodes cannot spend the same
   // dollar twice. Augmenting paths let constrained models displace flexible ones.
