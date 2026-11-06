@@ -251,3 +251,30 @@ func TestRescueNeedsEmptyCompatibleInventory(t *testing.T) {
 		t.Fatal("80 percent eligibility alone is not emergency exhaustion")
 	}
 }
+
+func TestRescueCandidatesKeepTheExpiryBaseline(t *testing.T) {
+	in := fixture()
+	in.Hours, in.Demand = 24, 20
+	in.Accounts = nil
+	for i, id := range []string{"a", "b"} {
+		a := Account{ID: id, Group: "codex", Full: 100, Left: 0, Reset: in.Now + 100*Hour, PeriodHours: 168, Auto: true, LeadMinutes: 30}
+		for j, h := range []int64{6 + int64(i), 120, 144, 168} {
+			a.Cards = append(a.Cards, Card{ID: string(rune('a' + j)), Expiry: in.Now + h*Hour})
+		}
+		in.Accounts = append(in.Accounts, a)
+	}
+	baseline, err := Solve(in, time.Second)
+	if err != nil || math.Abs(baseline.Spent-200) > eps {
+		t.Fatalf("expiry-only baseline must serve both refills: spent=%g err=%v", baseline.Spent, err)
+	}
+	for i := range in.Accounts {
+		in.Accounts[i].Rescue = true
+	}
+	got, err := Solve(in, time.Second)
+	if err != nil || got.Spent+eps < baseline.Spent {
+		t.Fatalf("rescue candidates displaced expiring cards: spent=%g baseline=%g err=%v", got.Spent, baseline.Spent, err)
+	}
+	if got.Status != "bounded-feasible" {
+		t.Fatalf("rescue search must retain its bounded status: %s", got.Status)
+	}
+}

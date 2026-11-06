@@ -17,14 +17,15 @@ const quotaPlannerView = (() => {
   const scenarioPolicies=new Set(['order','drain','rotate','usage','pace']);
   const optimization=s=>s.demand===null?s.optimization:s.scenarioOptimization;
   function comparison(s,p,compact=false) {
-    if(!p.coverage || p.rate===null) return empty('Not enough matched quota and priced usage samples.');
+    const opt=optimization(s),input=opt?.input,accounts=opt?.demandKnown?M.scenarioAccounts(s.accounts,input):null;
+    if(!accounts||!Number.isFinite(input.demand))return empty('Not enough matched quota and priced usage samples.');
     const rows=compact?policies.filter(([id])=>id===s.policy):policies;
     if(!rows.length)return empty('This policy needs model, latency or weight data; no reliable forecast yet.');
     return `<div class="v-scroll"><table class="v-pool-table"><thead><tr>${['Routing','Projected use · 72 h','Remaining after 72 h','Unused at refills','Average tokens / s'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead><tbody>${rows.map(([id,label])=>{
-      const opt=optimization(s), f=id==='harvest'?(opt?.demandKnown?opt.result:null):scenarioPolicies.has(id)?M.simulate(p.accounts,id,p.rate):null;
+      const f=id==='harvest'?opt.result:scenarioPolicies.has(id)?M.simulate(accounts,id,input.demand,input.hours,input.demands):null;
       const title=compact?tr(label):`<button class="text" data-policy="${id}" aria-pressed="${id===s.policy}">${tr(label)}</button>`;
-      return `<tr ${id===s.policy?'class="selected"':''}><td>${title}</td>${f?.points?.length?`<td>${money(f.spent)}</td><td>${money(f.remaining)}</td><td>${money(f.waste)}</td><td>${n(f.tokens/(72*3600))}</td>`:`<td colspan="4">${tr(id==='harvest'?'Not enough matched quota and priced usage samples.':'This policy needs model, latency or weight data; no reliable forecast yet.')}</td>`}</tr>`;
-    }).join('')}</tbody></table></div><p class="v-caption">${tr('Same demand for every scenario; 30-minute sessions. Token rate is an average usage pace, not model generation speed. Model limits, cache changes and parallel sessions can change results.')}</p>`;
+      return `<tr ${id===s.policy?'class="selected"':''}><td>${title}${id==='harvest'&&f?.status==='bounded-feasible'?`<small class="v-caption">${tr('Bounded search · not a guaranteed optimum')}</small>`:''}</td>${f?.points?.length?`<td>${money(f.spent)}</td><td>${money(f.remaining)}</td><td>${money(f.waste)}</td><td>${n(f.tokens/(input.hours*3600))}</td>`:`<td colspan="4">${tr(id==='harvest'?'Not enough matched quota and priced usage samples.':'This policy needs model, latency or weight data; no reliable forecast yet.')}</td>`}</tr>`;
+    }).join('')}</tbody></table></div><p class="v-caption">${tr('Same calibrated accounts and demand. Quota harvest uses bounded optimization; other policies use a simplified 30-minute-session simulation. These estimates are not a guaranteed ranking. Token rate is average consumption, not generation speed.')}</p>`;
   }
 
   const liveFormat = (value, kind) => kind === 'ratio' ? n(value) + '×' : money(value) + (kind === 'rate' ? ' / h' : '');

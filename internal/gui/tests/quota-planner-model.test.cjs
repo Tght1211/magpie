@@ -40,3 +40,26 @@ test('live pace uses the last complete hour, independent of forecast demand',()=
  assert.equal(M.pace(p,now+91000).status,'unknown');p.count=3;assert.equal(M.pace(p,now).actual,null);
  p.count=2;p.required=0;assert.equal(M.pace(p,now).ratio,null);
 });
+
+test('policy comparisons share solver inventory, flags and provider demand',()=>{
+ const a={id:'a',provider:'codex',index:0,now,known:true,left:100,reset:now+100*hour,estimate:{full:999,tokens:999},hourly:[],cards:[],auto:false};
+ const b={...a,id:'b',provider:'claude',index:1};
+ const input={now,hours:2,demand:15,demands:{codex:10,claude:5},accounts:[{id:'a',group:'codex',left:50,full:100,tokens:1000,reset:now+20*hour,auto:true,leadMinutes:30,cards:[{expiry:now+10*hour}]},{id:'b',group:'claude',left:100,full:100,tokens:2000,reset:now+30*hour,auto:false,leadMinutes:30,cards:[]}]};
+ const scoped=M.scenarioAccounts([a,b,{...a,id:'uncalibrated'}],input);
+ assert.equal(scoped.length,2);assert.equal(scoped[0].left,50);assert.equal(scoped[0].estimate.full,100);assert.equal(scoped[0].auto,true);assert.equal(scoped[0].lead,1800000);assert.equal(scoped[0].cards[0].at,now+10*hour);
+ const run=M.simulate(scoped,'pace',input.demand,input.hours,input.demands);
+ assert.equal(run.spent,30);assert.equal(run.tokens,400);assert.equal(run.remaining,120);
+ assert.equal(a.estimate.full,999);assert.equal(a.auto,false);
+ assert.equal(M.scenarioAccounts([a],input),null);assert.equal(M.scenarioAccounts([a,b],null),null);
+});
+test('routing preview excludes extra UI inventory outside the measured planning scope',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+ const V=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/plugins/usage/planner-view.js'),'utf8')+'\nquotaPlannerView',{quotaPlannerModel:M,t:k=>k,ledMoney:v=>v.toFixed(2),document:{documentElement:{lang:'en'}},Intl});
+ const a={id:'a',provider:'codex',index:0,now,known:true,left:50,reset:now+100*hour,estimate:{full:100,tokens:1000},hourly:[],cards:[],auto:false};
+ const input={now,hours:72,demand:1,demands:{codex:1},accounts:[{id:'a',group:'codex',left:50,full:100,tokens:1000,reset:a.reset,periodHours:168,auto:false,leadMinutes:30,cards:[]}]};
+ a.hourly=[{from:at(-1),to:at(0),cost:1,tokens:10,unpriced:0,complete:true}];
+ const opt={input,demandKnown:true};
+ const baseline=V.routingPreview([a],'pace',opt);
+ assert.equal(V.routingPreview([a,{...a,id:'extra',estimate:{full:10000,tokens:100000}}],'pace',opt),baseline,'UI-only inventory must not change the policy comparison');
+ assert(baseline.includes('50.00'),'the scoped remaining inventory can serve 50, not zero');
+});

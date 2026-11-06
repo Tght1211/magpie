@@ -143,6 +143,7 @@ func Solve(in Input, budget time.Duration) (Result, error) {
 			}
 		}
 	}
+	expiryDecisions := append([]decision(nil), ds...)
 	stop := time.Now().Add(budget)
 	// Rescue options are taken from actual stockout boundaries in the no-card
 	// flow. They are bounded candidates, not a continuous-time optimum.
@@ -179,33 +180,44 @@ func Solve(in Input, budget time.Duration) (Result, error) {
 			}
 		}
 	}
-	sort.SliceStable(ds, func(i, j int) bool { return ds[i].at < ds[j].at })
-	limited := len(ds) > 8 || rescueOptions
-	if len(ds) > 8 {
-		ds = ds[:8]
+	// Establish the expiry-only baseline before emergency candidates can crowd
+	// the bounded search. Adding rescue options must not discard a feasible
+	// expiring-card schedule that was already evaluated.
+	sets := [][]decision{ds}
+	if rescueOptions {
+		sets = [][]decision{expiryDecisions, ds}
 	}
+	limited := rescueOptions
 	best := Result{}
 	have := false
 	n := 0
-	for mask := 0; mask < (1 << len(ds)); mask++ {
-		if mask > 0 && time.Now().After(stop) {
+search:
+	for _, choices := range sets {
+		sort.SliceStable(choices, func(i, j int) bool { return choices[i].at < choices[j].at })
+		if len(choices) > 8 {
 			limited = true
-			break
+			choices = choices[:8]
 		}
-		r, ok, complete := scenario(in, ds, mask, end, stop)
-		if !complete {
-			limited = true
-			break
-		}
-		n++
-		if !ok {
-			continue
-		}
-		loss := r.Waste + r.ExpiredCards
-		old := best.Waste + best.ExpiredCards
-		if !have || r.Spent > best.Spent+eps || math.Abs(r.Spent-best.Spent) < eps && (loss < old-eps || math.Abs(loss-old) < eps && (r.Remaining > best.Remaining+eps || math.Abs(r.Remaining-best.Remaining) < eps && serviceDelay(r, in.Now) < serviceDelay(best, in.Now))) {
-			best = r
-			have = true
+		for mask := 0; mask < (1 << len(choices)); mask++ {
+			if n > 0 && time.Now().After(stop) {
+				limited = true
+				break search
+			}
+			r, ok, complete := scenario(in, choices, mask, end, stop)
+			if !complete {
+				limited = true
+				break search
+			}
+			n++
+			if !ok {
+				continue
+			}
+			loss := r.Waste + r.ExpiredCards
+			old := best.Waste + best.ExpiredCards
+			if !have || r.Spent > best.Spent+eps || math.Abs(r.Spent-best.Spent) < eps && (loss < old-eps || math.Abs(loss-old) < eps && (r.Remaining > best.Remaining+eps || math.Abs(r.Remaining-best.Remaining) < eps && serviceDelay(r, in.Now) < serviceDelay(best, in.Now))) {
+				best = r
+				have = true
+			}
 		}
 	}
 	best.Evaluated = n

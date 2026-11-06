@@ -50,8 +50,11 @@ opportunity, not current spendable balance.
 The horizon is 72 hours in production (API maximum 168), with hourly demand
 slots split at exact event times. Cards have skip/use candidates at their
 expiry margin; a natural reset inside that margin moves the candidate after
-that reset. At most eight nearest card decisions are enumerated within a
-400 ms cooperative search budget, checked during flow too. `optimal-discrete`
+that reset. Expiry-only schedules are searched first and their best feasible
+result is kept when emergency candidates are added. Each pass enumerates at most eight nearest
+card decisions within one shared 400 ms cooperative budget, checked during flow
+too. Emergency alternatives cannot displace an already evaluated expiry baseline
+merely by filling the candidate limit. `optimal-discrete`
 means all these discrete schedules were checked, not continuous global
 optimality. `bounded-feasible` is the best complete feasible solution found;
 `budget-exhausted` means none finished and publishes no target. Larger pools
@@ -85,9 +88,12 @@ examples and demand overrides use it. It is an illustration, not a live reset.
 The UI shows account emails with the existing privacy masking, account-colored
 stacked history/forecast, refill events, actual hourly API-priced consumption,
 recommended pace and scenario comparisons. Other policies are simplified
-30-minute-session scenarios; Smart/weight/speed/free policies without the
-necessary inputs show no reliable prediction. Provider groups cannot borrow
-one another's demand. The dispatch illustration demonstrates why a session,
+30-minute-session scenarios; comparisons use the optimizer's exact calibrated
+account scope, readings, auto-reset flags, horizon and provider demand. The UI
+identifies harvest as bounded optimization and the other policies as simplified
+session simulations, so the displayed estimates do not guarantee a policy ranking.
+Smart/weight/speed/free policies without the necessary inputs show no reliable
+prediction. Provider groups cannot borrow one another's demand. The dispatch illustration demonstrates why a session,
 full lane or timeout may select a different account from the quota target.
 
 ## Verification

@@ -2,6 +2,7 @@
 // kernel adds them to i18n.js's (magpie.strings).
 magpie.strings({
   zh: {
+    "Bounded search · not a guaranteed optimum": "限时搜索 · 不保证全局最优",
     "Recurring demand exceeds natural supply.": "持续消耗超过自然补充能力。",
     "Aggregate capacity ratio": "总供需比",
     "Provider-level estimate": "按渠道汇总估算",
@@ -533,6 +534,7 @@ magpie.strings({
     "Target pace": "目标",
   },
   "zh-TW": {
+    "Bounded search · not a guaranteed optimum": "限時搜尋 · 不保證全域最佳",
     "Recurring demand exceeds natural supply.": "持續消耗超過自然補充能力。",
     "Aggregate capacity ratio": "總供需比",
     "Provider-level estimate": "依供應商彙總估算",
@@ -1064,6 +1066,7 @@ magpie.strings({
     "Target pace": "目標",
   },
   ja: {
+    "Bounded search · not a guaranteed optimum": "制限付き探索 · 最適解の保証なし",
     "Recurring demand exceeds natural supply.": "継続的な需要が自然補充量を超えています。",
     "Aggregate capacity ratio": "総供給・需要比",
     "Provider-level estimate": "プロバイダー単位の推定",
@@ -1595,6 +1598,7 @@ magpie.strings({
     "Target pace": "目標",
   },
   de: {
+    "Bounded search · not a guaranteed optimum": "Begrenzte Suche · kein garantiertes Optimum",
     "Recurring demand exceeds natural supply.": "Der laufende Bedarf übersteigt die natürliche Nachfüllung.",
     "Aggregate capacity ratio": "Gesamtverhältnis von Kapazität zu Bedarf",
     "Provider-level estimate": "Schätzung je Anbieter",

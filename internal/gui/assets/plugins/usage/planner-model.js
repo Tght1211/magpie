@@ -154,16 +154,25 @@ const quotaPlannerModel = (() => {
     }
     return {accounts:aa,points,events,spent,waste,unserved,tokens:tokenUse,remaining:points.at(-1)?.total || 0,rate,hours};
   }
-  function simulate(accounts,policy='harvest',rate=0,hours=72) {
+  function simulate(accounts,policy='harvest',rate=0,hours=72,groupRates=null) {
     const groups=new Map();for(const a of accounts){const k=a.provider || '';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a);}
     if(groups.size<=1)return simulateSingle(accounts,policy,rate,hours);
     const weights=[...groups.values()].map(as=>as.reduce((n,a)=>n+a.hourly.reduce((v,p)=>v+(p.unpriced===0?p.cost:0),0),0));
     const total=weights.reduce((v,w)=>v+w,0);
-    const runs=[...groups.values()].map((as,i)=>simulateSingle(as,policy,total>0?rate*weights[i]/total:0,hours));
+    const runs=[...groups.values()].map((as,i)=>simulateSingle(as,policy,groupRates?groupRates[as[0].provider]??0:total>0?rate*weights[i]/total:0,hours));
     const aa=accounts.filter(a=>a.known&&a.estimate), times=[...new Set(runs.flatMap(r=>r.points.map(p=>p.at)))].sort((a,b)=>a-b);
     const points=times.flatMap(at=>[false,true].map(after=>{const values=aa.map(a=>{const r=runs.find(r=>r.accounts.some(v=>v.id===a.id));const exact=r.points.filter(p=>p.at===at);const p=exact.length?(after?exact.at(-1):exact[0]):r.points.filter(p=>p.at<at).at(-1)||r.points[0];return p.values[r.accounts.findIndex(v=>v.id===a.id)];});return {at,values,total:values.reduce((v,w)=>v+w,0)};}));
     const sum=k=>runs.reduce((v,r)=>v+r[k],0);
     return {accounts:aa,points,events:runs.flatMap(r=>r.events).sort((a,b)=>a.at-b.at),spent:sum('spent'),waste:sum('waste'),unserved:sum('unserved'),tokens:sum('tokens'),remaining:sum('remaining'),rate,hours};
+  }
+  // Compare against the optimizer's exact calibrated scope, readings and flags.
+  // A UI-only calibration or a newly added account must not silently add stock.
+  function scenarioAccounts(accounts,input) {
+    if(!input?.accounts?.length)return null;
+    const by=new Map(accounts.map(a=>[a.id,a]));
+    if(input.accounts.some(a=>!by.has(a.id)))return null;
+    return input.accounts.map(a=>({...by.get(a.id),now:input.now,known:true,provider:a.group||'',left:a.left,reset:a.reset,blocked:!!a.blocked,
+      estimate:{full:a.full,tokens:a.tokens},auto:a.auto,lead:a.leadMinutes*60000,cards:(a.cards||[]).map(c=>({at:c.expiry,window:'weekly'}))}));
   }
   function pool(accounts, policy='harvest', demand=null) {
     const aa=accounts.filter(a=>a.known && a.estimate), now=accounts[0]?.now || Date.now();
@@ -196,6 +205,6 @@ const quotaPlannerModel = (() => {
     return {actual, target, ratio, status, at:last?.at, delta:ratio === null ? null : actual-target,
       runway:actual > 0 ? p.total / actual : null};
   }
-  return { hour, time, share, accounts, windows, observed, ranked, cache, newCycle, calibrate, enrich, deadline, simulate, pool, pace };
+  return { hour, time, share, accounts, windows, observed, ranked, cache, newCycle, calibrate, enrich, deadline, simulate, scenarioAccounts, pool, pace };
 })();
 if (typeof module !== 'undefined') module.exports = quotaPlannerModel;
