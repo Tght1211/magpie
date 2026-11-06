@@ -173,7 +173,10 @@ consumption assumptions or routing priorities.
 The two native tabs are quota planning and pool health. Consumption review and
 Key sharing benefit no longer have page entries; retained history and member
 aggregates remain available to planning and health. Member/account ownership
-can be edited in the health ledger. The explanation demo is no longer registered. The account stack is
+can be edited in the health ledger. Only Keys with a resolved contributed account
+appear as ledger rows. Unbound Keys can be selected through Bind one account;
+missing/stale account references remain hidden until bound. This display filter
+does not change workload, pool health, or transfer calculations. The explanation demo is no longer registered. The account stack is
 the planning default; controls sit above it, with date navigation and Back to now
 in one strip below. Dragging preserves the range input rather than replacing it
 mid-gesture. Weekends use the browser's local calendar. Minute allowance reads and

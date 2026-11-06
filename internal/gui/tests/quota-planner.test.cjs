@@ -31,7 +31,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    }
    assert.fail('control could not be reached by scrolling: '+selector);
   }
-  const errors=[],mutations=[]; const bindings={};let memberComplete=true,unattributed=false,planKnown=true,planUnavailable=false,bindingError=false;let mode='ok', delayed=null, qReads=0, paceMode='normal';
+  const errors=[],mutations=[]; const bindings={};let noBindings=false;let memberComplete=true,unattributed=false,planKnown=true,planUnavailable=false,bindingError=false;let mode='ok', delayed=null, qReads=0, paceMode='normal';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const req=route.request(), u=new URL(req.url()), json=x=>route.fulfill({json:x});
@@ -50,7 +50,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    if(u.pathname==='/api/usage/quota-plan/demo')return json(solveFixture(req.postDataJSON()));
    if(u.pathname==='/api/usage/quotas/history')return json(history);
    if(u.pathname==='/api/usage/quota-members'&&req.method()==='POST'){if(bindingError)return route.fulfill({status:409,body:'duplicate'});const b=req.postDataJSON();bindings[b.key]=b.account;return json({ok:true});}
-   if(u.pathname==='/api/usage/quota-members')return json({at:now,members:accounts.map((q,i)=>({id:'k'+i,name:i===0?'<img src=x onerror=alert(1)>':'Member '+i,account:bindings['k'+i]===''?'':planInput.accounts[i].id,ref:bindings['k'+i]??'codex/'+i,eligible:{'codex/model':planInput.accounts.map(a=>a.id)}})),accounts:accounts.map((q,i)=>({id:planInput.accounts[i].id,ref:'codex/'+i,user:q.user,provider:'codex'})),usage:{from:now-30*86400000,to:now,complete:memberComplete,rows:accounts.flatMap((q,i)=>Array.from({length:26},(_,h)=>({at:Math.floor(now/3600000)*3600000-(h+1)*3600000,key:unattributed?'':'k'+i,account:planInput.accounts[i].id,model:'codex/model',cost:1,tokens:10000,unpriced:0})))}});
+   if(u.pathname==='/api/usage/quota-members')return json({at:now,members:accounts.map((q,i)=>({id:'k'+i,name:i===0?'<img src=x onerror=alert(1)>':'Member '+i,account:noBindings||bindings['k'+i]===''?'':planInput.accounts[i].id,ref:bindings['k'+i]??'codex/'+i,eligible:{'codex/model':planInput.accounts.map(a=>a.id)}})).concat([{id:'unbound',name:'Unbound member',eligible:{'codex/model':planInput.accounts.map(a=>a.id)}},{id:'stale',name:'Removed account',ref:'codex/removed',eligible:{'codex/model':planInput.accounts.map(a=>a.id)}}]),accounts:accounts.map((q,i)=>({id:planInput.accounts[i].id,ref:'codex/'+i,user:q.user,provider:'codex'})),usage:{from:now-30*86400000,to:now,complete:memberComplete,rows:accounts.flatMap((q,i)=>Array.from({length:26},(_,h)=>({at:Math.floor(now/3600000)*3600000-(h+1)*3600000,key:unattributed?'':'k'+i,account:planInput.accounts[i].id,model:'codex/model',cost:1,tokens:10000,unpriced:0})))}});
    if(u.pathname==='/api/usage')return json({...totals,series:[{...totals,label:'Today',time:at(0)}],callerKeys:[{id:'k',name:'<img src=x onerror=alert(1)>',...totals}]});
    if(u.pathname==='/api/gateway/trace'){await new Promise(r=>setTimeout(r,100));return json({mine:false,seq:0,routes:[],totals:{requests:0,rerouted:0,errors:0}});}
    if(u.pathname==='/api/gateway/history')return json({days:[],routes:[]});
@@ -122,15 +122,27 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   assert.equal(await page.locator('#qpBody img').count(),0);
   assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6);
   assert(await page.locator('[data-qp-number=health-ratio]').count());
+  assert.equal(await page.locator('[data-bind-member]').count(),4,'ledger shows only Keys with a resolved contributed account');
+  assert.equal(await page.locator('.account-table').getByText('Unbound member',{exact:true}).count(),0);
+  assert.equal(await page.locator('.account-table').getByText('Removed account',{exact:true}).count(),0);
   if(lang==='en'){
+   const demandBefore=await page.locator('[data-qp-number=health-demand]').getAttribute('data-qp-value');
    await reach('[data-bind-member=k0]');await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').first().click();
-   await page.waitForFunction(()=>document.querySelector('[data-bind-member=k0]')?.textContent.includes('Unbound'));
+   await page.waitForFunction(()=>!document.querySelector('[data-bind-member=k0]'));
+   assert.equal(await page.locator('[data-bind-member]').count(),3);
+   assert.equal(await page.locator('[data-qp-number=health-demand]').getAttribute('data-qp-value'),demandBefore,'hiding unbound Keys preserves their demand');
    assert.equal(bindings.k0,'');
-   await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').nth(1).click();
+   await reach('[data-bind-unbound]');await page.locator('[data-bind-unbound]').click();await page.getByRole('menuitemradio').first().click();await page.getByRole('menuitemradio').nth(1).click();
    await page.waitForFunction(()=>document.querySelector('[data-bind-member=k0]')?.textContent.includes('a@example.test'));
    assert.equal(bindings.k0,'codex/0');
    bindingError=true;await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').nth(2).click();
    await page.getByText('Binding could not be saved. The account may already belong to another member.',{exact:true}).waitFor();bindingError=false;
+   noBindings=true;await reach('#qpReload');await page.locator('#qpReload').click();
+   await page.getByText('No Keys are bound to an account yet.',{exact:true}).waitFor();
+   assert.equal(await page.locator('[data-bind-member]').count(),0);
+   await reach('[data-bind-unbound]');await page.locator('[data-bind-unbound]').click();
+   assert.equal(await page.getByRole('menuitemradio').count(),6,'empty ledger retains a binding path for every unbound Key');
+   await page.keyboard.press('Escape');noBindings=false;
    unattributed=true;await reach('#qpReload');await page.locator('#qpReload').click();
    await page.getByText('Aggregate capacity ratio',{exact:true}).waitFor();
    assert.equal(await page.locator('[data-qp-number=health-demand]').getAttribute('data-qp-value'),'72');

@@ -153,16 +153,21 @@ function quotaPlannerController(main) {
     if(b.dataset.qpMove){const r=quotaExplorer.range(state.explorer);moveTimeline(b.dataset.qpMove==='now'?Date.now()-r.span/7:r.from+Number(b.dataset.qpMove)*r.span*.75);return;}
     if(b.dataset.qpRescue){state.explorer.rescue=!state.explorer.rescue;draw();return;}
     if(b.dataset.qpComposition){state.composition=b.dataset.qpComposition;draw();return;}
-    if(b.dataset.bindMember){
-      const member=state.members.members.find(m=>m.id===b.dataset.bindMember);
-      const options=[{v:'',name:t('Unbound'),literalName:true},...state.members.accounts.map(a=>({v:a.ref,name:a.user,literalName:true}))];
-      openProtoMenu(b,options,member.ref,async ref=>{try{await api('usage/quota-members',{key:member.id,account:ref});leave();await load();}catch{statusBox.hidden=false;statusBox.textContent=t('Binding could not be saved. The account may already belong to another member.');}},'Contributed account');return;
+    if(b.dataset.bindMember){bindMember(b,b.dataset.bindMember);return;}
+    if(b.hasAttribute('data-bind-unbound')){
+      const options=state.members.members.filter(m=>!m.account).map(m=>({v:m.id,name:m.name||m.id,literalName:true}));
+      if(options.length)openProtoMenu(b,options,null,id=>bindMember(b,id),'Pool member');return;
     }
     if(b.hasAttribute('data-admission-model')){const models=[...new Set(quotaMembers.workload(state.members,Date.now())?.map(d=>d.model)||[])];openProtoMenu(b,models.map(m=>({v:m,name:m,literalName:true})),state.admission.model||models[0],v=>{state.admission.model=v;state.admission.support=[v];draw();},'Model');return;}
     if (b.id === 'qpReload') { leave(); load(true); return; }
     if (b.dataset.policy !== undefined) state.policy = b.dataset.policy;
     if (b.dataset.tab) {state.tab=b.dataset.tab;}
     draw();
+  }
+  function bindMember(anchor,id) {
+    const member=state.members?.members.find(m=>m.id===id);if(!member)return;
+    const options=[{v:'',name:t('Unbound'),literalName:true},...state.members.accounts.map(a=>({v:a.ref,name:a.user,literalName:true}))];
+    openProtoMenu(anchor,options,member.ref,async ref=>{try{await api('usage/quota-members',{key:member.id,account:ref});leave();await load();}catch{statusBox.hidden=false;statusBox.textContent=t('Binding could not be saved. The account may already belong to another member.');}},'Contributed account');
   }
   function input(e) {
     if(e.target.id==='qpNavigator'){state.explorer.start=Number(e.target.value);state.inspectAt=null;state.explorer.data=null;quotaDashboard.updateChart(box,state);return;}
