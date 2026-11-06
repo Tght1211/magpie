@@ -123,3 +123,30 @@ Final source validation completed on 2026-11-06 before deployment:
 - Changed Go files are gofmt-clean and `git diff --check` is clean.
 - Source fixes: `8965ad9d` (solver/comparison), `02578f4d` (partial coverage),
   `859eca57` (Darwin discovery/lifecycle fixtures), `dbf9b1f8` (dated fixture).
+
+
+## Production deployment
+
+Deployed `magpie 0.1.2995-quota-dashboard.6` from `d68511d4100f1f70f3dc6c4bf082dd1bc1ab9aff` on 2026-11-06
+(Asia/Shanghai). Executable SHA-256:
+`73e2f0450cec71cd06df0936cf9f9405f15ac09dd76f8883349abe31fc3b2117`.
+
+A slow/interrupted initial transfer failed the candidate check before deployment;
+production was not replaced. The resumed compressed transfer and extracted final
+binary both matched their local hashes. Final Linux preflight passed under the
+service user with an isolated empty HOME, including authentication, embedded
+assets and complete-ledger recognition.
+
+Rollback backup: `/var/backups/magpie-custom/20261106T125243Z-quota-dashboard.6`. Configuration hashes, all pre-switch provider
+quota identities and the full retained usage-history prefix were preserved. The
+gateway and planning APIs passed post-start checks. Backup/switch/check elapsed
+19.45 seconds; this is not a measured request downtime. Rollback
+restores the previous executable while retaining current data.
+
+Post-deployment Chromium and WebKit checks passed both pages at 1440 and 390 px,
+including populated partial-scope curves, bound-only member rows, timeline
+navigation, automatic refresh, finite values, no overflow and no browser errors.
+The later live reading already included a newly calibrated account in the scope;
+unknown monthly capacity stayed excluded. A subsequent trace observed two
+successful completed requests, no failed requests and no requests in flight.
+This snapshot is a deployment check, not an availability guarantee.
