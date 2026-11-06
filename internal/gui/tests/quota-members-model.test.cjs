@@ -44,3 +44,20 @@ test('incompatible stock cannot postpone emergency refill; reset events are vert
  const end=K.project({now,accounts:[account('a',{reset:now+24*h})]},ds,1,false);
  assert(end.events.some(e=>e.at===now+24*h&&e.kind==='reset'));assert.equal(end.remaining,100);
 });
+
+test('health preserves measured supply and separates aggregate from member capacity',()=>{
+ const plan={input:{now,accounts:[account('a'),account('b',{group:'claude'})],demands:{codex:2,claude:1}},total:2,coverage:2,demandKnown:true};
+ const data={usage:{complete:true,from:now-48*h,to:now,rows:[{at:now-h,key:'',model:'codex/m',cost:48,tokens:100}]},members:[]};
+ const out=K.health(data,plan,now);
+ assert.equal(out.modelAware,false);assert.equal(out.demand,72);assert(Math.abs(out.supply-200/7)<1e-6);
+ assert.deepEqual(out.work.map(d=>d.eligible),[['a'],['b']]);
+ assert.equal(K.health(data,{...plan,demandKnown:false},now).work,null);
+ assert.equal(K.health(data,{...plan,demandKnown:false},now).supply,out.supply);
+ assert.equal(K.health(data,{...plan,total:3},now).supply,null);
+ assert.equal(K.health(data,plan,now+121000).work,null);
+ assert.equal(K.health(data,{...plan,input:{...plan.input,demands:{codex:2}}},now).work,null);
+ data.usage.rows[0].unpriced=1;assert.equal(K.health(data,plan,now).work,null);data.usage.rows[0].unpriced=0;
+ data.members=[{id:'k',eligible:{'codex/m':['a']}}];data.usage.rows[0].key='k';
+ const member=K.health(data,plan,now);assert.equal(member.modelAware,true);assert.equal(member.demand,48);assert.deepEqual(member.work[0].eligible,['a']);
+ data.usage.rows=[];assert.equal(K.health(data,plan,now).demand,0);
+});

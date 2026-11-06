@@ -16,10 +16,10 @@ function quotaPlannerPage(ctx) {
 }
 function quotaPlannerController(main) {
   const M = quotaPlannerModel, box = main.querySelector('#qpBody'), statusBox = main.querySelector('#qpStatus');
-  const state = { explorer: {scale:'week',start:Date.now()-86400000,rescue:true,data:null,busy:false}, tab: 'plan', composition:'accounts', forecastMode:'recommended', healthLoad:100, unit:null, review:{hours:24,account:'',data:null}, members:null, admission:{left:100,cards:0}, auto:true, policy: 'harvest', demand: null, optimization: null, scenarioOptimization: null, key: '', accounts: [], usage: null, errors: [], loaded: false };
+  const state = { explorer: {scale:'week',start:Date.now()-86400000,rescue:true,data:null,busy:false}, tab: 'plan', composition:'accounts', forecastMode:'recommended', healthLoad:100, unit:null, members:null, admission:{left:100,cards:0}, auto:true, policy: 'harvest', demand: null, optimization: null, scenarioOptimization: null, accounts: [], errors: [], loaded: false };
   const headerTools=main.querySelector('#qpHeader'),headerHost=document.querySelector('body > header.top');
   if(headerHost){headerTools.className='qp qp-header-tools';headerHost.append(headerTools);}
-  let reviewGeneration=0,timelineGeneration=0, expiredPace=false, resizeFrame, drag=null;
+  let timelineGeneration=0, expiredPace=false, resizeFrame, drag=null;
   let generation = 0, pending = false, timer, paceTimer, clockTimer, numberFrame, deferredDraw = false;
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const shown = () => !main.hidden && !document.hidden;
@@ -34,7 +34,7 @@ function quotaPlannerController(main) {
     const top = main.scrollTop;
     state.loading=pending;
     headerTools.hidden=false;headerTools.innerHTML=quotaDashboard.settingsBar(state);
-    main.querySelector('#qpTabs').innerHTML = [['plan', 'Quota planner'], ['trend', 'Consumption review'], ['keys', 'Key sharing benefit'], ['health', 'Pool health']].map(([id, label]) => `<button class="${state.tab === id ? 'on' : ''}" role="tab" tabindex="${state.tab===id?0:-1}" aria-controls="qpBody" data-tab="${id}" aria-selected="${state.tab === id}" aria-pressed="${state.tab === id}">${quotaPlannerView.esc(t(label))}</button>`).join('');
+    main.querySelector('#qpTabs').innerHTML = [['plan', 'Quota planner'], ['health', 'Pool health']].map(([id, label]) => `<button class="${state.tab === id ? 'on' : ''}" role="tab" tabindex="${state.tab===id?0:-1}" aria-controls="qpBody" data-tab="${id}" aria-selected="${state.tab === id}" aria-pressed="${state.tab === id}">${quotaPlannerView.esc(t(label))}</button>`).join('');
     statusBox.textContent = state.errors.length ? t('Some planning data could not be read. Refresh to try again.') : state.loaded ? t(state.auto?'Live usage every 15 seconds · allowance and plan every minute':'Automatic refresh paused') + (state.updated?' · '+new Date(state.updated).toLocaleTimeString(): '') : t('Loading…');
     box.innerHTML = state.loaded ? quotaDashboard.render(state) : '<p class="v-empty">'+quotaPlannerView.tr('Loading…')+'</p>';
     const reload=main.querySelector('#qpReload');if(reload)reload.disabled=pending;
@@ -93,23 +93,22 @@ function quotaPlannerController(main) {
     clearTimeout(paceTimer);
     const seq = ++generation;
     if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=true;
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const results = await Promise.allSettled([api('usage/quotas' + (asked ? '?asked=1&all=1' : '')), api('usage/quotas/history?days=all'), api('usage?period=30d&tz=' + encodeURIComponent(zone)), api('usage/quota-pool'), api('usage/quota-plan'), api('usage/quota-members')]);
+    const results = await Promise.allSettled([api('usage/quotas' + (asked ? '?asked=1&all=1' : '')), api('usage/quotas/history?days=all'), api('usage/quota-pool'), api('usage/quota-plan'), api('usage/quota-members')]);
     if (seq !== generation || !shown()) return;
     pending = false;
     if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=false;
-    const get = (i, array) => results[i].status === 'fulfilled' && (array ? Array.isArray(results[i].value) : typeof results[i].value?.calls === 'number') ? results[i].value : null;
-    const quotas = get(0, true), hist = get(1, true), usage = get(2, false);
-    state.errors = [quotas === null && 'quota', hist === null && 'history', usage === null && 'usage'].filter(Boolean);
-    const poolData = get(3, true);
+    const get = i => results[i].status === 'fulfilled' && Array.isArray(results[i].value) ? results[i].value : null;
+    const quotas = get(0), hist = get(1);
+    state.errors = [quotas === null && 'quota', hist === null && 'history'].filter(Boolean);
+    const poolData = get(2);
     if (poolData === null) state.errors.push('pool');
     state.accounts = quotas ? M.enrich(M.accounts(quotas, hist || []), poolData || [], window.state?.settings || (typeof window.poolPlannerSettings === 'function' ? window.poolPlannerSettings() : {})) : [];
     window.noteAccounts?.(quotas || []);
-    state.usage = usage;
-    state.optimization = results[4]?.status === 'fulfilled' && Array.isArray(results[4].value?.input?.accounts) ? results[4].value : null;
-    state.members=results[5]?.status==='fulfilled'&&Array.isArray(results[5].value?.members)&&Array.isArray(results[5].value?.accounts)&&Array.isArray(results[5].value?.usage?.rows)?results[5].value:null;
+    state.optimization = results[3]?.status === 'fulfilled' && Array.isArray(results[3].value?.input?.accounts) ? results[3].value : null;
+    if(!state.optimization)state.errors.push('plan');
+    state.members=results[4]?.status==='fulfilled'&&Array.isArray(results[4].value?.members)&&Array.isArray(results[4].value?.accounts)&&Array.isArray(results[4].value?.usage?.rows)?results[4].value:null;
     if(!state.members)state.errors.push('members');
-    state.updated=Date.now(); if(state.tab==='trend')loadReview(); state.loaded = true; expiredPace=false;loadTimeline();
+    state.updated=Date.now(); state.loaded = true; expiredPace=false;loadTimeline();
     if(state.demand!==null) solveScenario();
     draw(true);
     startClock();
@@ -122,11 +121,6 @@ function quotaPlannerController(main) {
       if(!Array.isArray(data.bins))throw Error('Invalid timeline');ex.data=data;ex.earliest=data.earliest||ex.earliest;
     }catch{if(seq!==timelineGeneration||!shown())return;ex.error=true;}
     if(seq===timelineGeneration){ex.busy=false;draw(true);}
-  }
-  async function loadReview(){
-    const seq=++reviewGeneration,gen=generation,to=Date.now(),hours=state.review.hours;state.review.data=null;
-    const from=hours===0?(state.explorer.earliest||to-30*86400000):to-(hours||24)*3600000;
-    try{const d=await api('usage/quota-plan?history=1&from='+Math.round(from)+'&to='+to);if(gen===generation&&seq===reviewGeneration&&shown()&&Array.isArray(d.bins)){state.review.data=d;draw(true);}}catch{if(gen===generation&&seq===reviewGeneration&&shown()){state.review.data=null;draw(true);}}
   }
   function moveTimeline(start,scale=state.explorer.scale) {
     const ex=state.explorer;ex.scale=scale;state.inspectAt=null;state.pinned=false;const span=quotaExplorer.range(ex).span;
@@ -154,31 +148,24 @@ function quotaPlannerController(main) {
     if(b.dataset.forecastMode){state.forecastMode=b.dataset.forecastMode;state.demand=null;draw();return;}
     if(b.hasAttribute('data-qp-scale-menu')){openProtoMenu(b,quotaExplorer.scales.map(v=>({v:v.id,name:v.key})),state.explorer.scale,v=>moveTimeline(state.explorer.start,v),'Date window');return;}
     if(b.dataset.qpEvent){state.inspectAt=Number(b.dataset.qpEvent);state.pinned=true;draw();return;}
-    if(b.hasAttribute('data-key-now')){state.keyTime=null;draw();return;}
     if(b.hasAttribute('data-admission-price')){openProtoMenu(b,[20,100,200].map(v=>({v:String(v),name:'$'+v+' '+t('per month'),literalName:true})),String(state.admission.price||20),v=>{state.admission.price=Number(v);draw();},'Plan monthly price label · USD');return;}
     if(b.dataset.qpScale){moveTimeline(state.explorer.start,b.dataset.qpScale);return;}
     if(b.dataset.qpMove){const r=quotaExplorer.range(state.explorer);moveTimeline(b.dataset.qpMove==='now'?Date.now()-r.span/7:r.from+Number(b.dataset.qpMove)*r.span*.75);return;}
     if(b.dataset.qpRescue){state.explorer.rescue=!state.explorer.rescue;draw();return;}
     if(b.dataset.qpComposition){state.composition=b.dataset.qpComposition;draw();return;}
-    if(b.dataset.member!==undefined){state.key=state.members?.members[Number(b.dataset.member)]?.id||'';state.keyModel='';draw();return;}
-    if(b.dataset.keyDays){state.keyDays=Number(b.dataset.keyDays);draw();return;}
-    if(b.dataset.keyModel!==undefined){state.keyModel=b.dataset.keyModel;draw();return;}
-    if(b.dataset.reviewAccount!==undefined){state.review.account=b.dataset.reviewAccount===''?'':state.accounts[Number(b.dataset.reviewAccount)]?.id;draw();return;}
-    if(b.dataset.reviewHours!==undefined){state.review.hours=Number(b.dataset.reviewHours);loadReview();draw();return;}
     if(b.dataset.bindMember){
       const member=state.members.members.find(m=>m.id===b.dataset.bindMember);
       const options=[{v:'',name:t('Unbound'),literalName:true},...state.members.accounts.map(a=>({v:a.ref,name:a.user,literalName:true}))];
-      openProtoMenu(b,options,member.ref,async ref=>{try{await api('usage/quota-members',{key:member.id,account:ref});leave();await load();}catch{statusBox.textContent=t('Binding could not be saved. The account may already belong to another member.');}},'Contributed account');return;
+      openProtoMenu(b,options,member.ref,async ref=>{try{await api('usage/quota-members',{key:member.id,account:ref});leave();await load();}catch{statusBox.hidden=false;statusBox.textContent=t('Binding could not be saved. The account may already belong to another member.');}},'Contributed account');return;
     }
     if(b.hasAttribute('data-admission-model')){const models=[...new Set(quotaMembers.workload(state.members,Date.now())?.map(d=>d.model)||[])];openProtoMenu(b,models.map(m=>({v:m,name:m,literalName:true})),state.admission.model||models[0],v=>{state.admission.model=v;state.admission.support=[v];draw();},'Model');return;}
     if (b.id === 'qpReload') { leave(); load(true); return; }
     if (b.dataset.policy !== undefined) state.policy = b.dataset.policy;
-    if (b.dataset.tab) {state.tab=b.dataset.tab;if(state.tab==='trend')loadReview();}
+    if (b.dataset.tab) {state.tab=b.dataset.tab;}
     draw();
   }
   function input(e) {
     if(e.target.id==='qpNavigator'){state.explorer.start=Number(e.target.value);state.inspectAt=null;state.explorer.data=null;quotaDashboard.updateChart(box,state);return;}
-    if(e.target.id==='qpKeyTime'){state.keyTime=Number(e.target.value);box.querySelector('#qpKeyReadout').innerHTML=quotaDashboard.keyReadout(state);return;}
     if(e.target.id==='qpHealthLoad'){e.target.nextElementSibling.textContent=e.target.value+'%';return;}
     if (e.target.id === 'qpDemand') return;
 
@@ -203,8 +190,8 @@ function quotaPlannerController(main) {
   function pointerCancel(){drag=null;if(deferredDraw)draw(true);}
   function keydown(e){
     if(e.target.matches('#qpTabs [data-tab]')&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){
-      e.preventDefault();const ids=['plan','trend','keys','health'],i=ids.indexOf(state.tab),j=e.key==='Home'?0:e.key==='End'?3:(i+(e.key==='ArrowRight'?1:-1)+4)%4;
-      state.tab=ids[j];if(state.tab==='trend')loadReview();draw();main.querySelector('#qpTabs [data-tab='+state.tab+']').focus();return;
+      e.preventDefault();const ids=['plan','health'],i=ids.indexOf(state.tab),j=e.key==='Home'?0:e.key==='End'?ids.length-1:(i+(e.key==='ArrowRight'?1:-1)+ids.length)%ids.length;
+      state.tab=ids[j];draw();main.querySelector('#qpTabs [data-tab='+state.tab+']').focus();return;
     }
     if(!e.target.matches('[data-qp-explore]'))return;if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const r=quotaExplorer.range(state.explorer),at=(state.inspectAt??Date.now())+(e.key==='ArrowRight'?1:-1)*r.span/28;state.pinned=true;quotaDashboard.inspect(box,state,at,true);}}
   main.addEventListener('pointermove',pointerMove);main.addEventListener('pointerout',pointerOut);

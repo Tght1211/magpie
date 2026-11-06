@@ -15,6 +15,25 @@ const quotaMembers = (() => {
     for(const d of by.values()){const member=data.members.find(m=>m.id===d.key);if(!member||member.restricted)return null;d.eligible=member.eligible?.[d.model]||[];}
     return [...by.values()].filter(d=>d.rate>eps);
   }
+  // Pool totals do not require member ownership. When member/model permissions
+  // are unknown, use the independently measured provider totals explicitly as
+  // an aggregate scenario; never present that as compatible member capacity.
+  function health(data, plan, now) {
+    const input=plan?.input, accounts=input?.accounts||[], base=workload(data,now);
+    const fresh=input&&now>=input.now&&now-input.now<=120000;
+    const complete=fresh&&plan.total>0&&accounts.length===plan.total&&accounts.every(a=>Number.isFinite(a.full)&&a.full>0&&Number.isFinite(a.periodHours)&&a.periodHours>0);
+    const supply=complete?accounts.reduce((n,a)=>n+(a.blocked?0:a.full/a.periodHours)*24,0):null;
+    let work=base, modelAware=base!==null;
+    const end=Math.floor(now/hour)*hour;
+    const unpriced=data?.usage?.rows.some(r=>r.at>=end-24*hour&&r.at<end&&r.unpriced>0);
+    if(!modelAware&&!unpriced&&complete&&plan.demandKnown&&plan.coverage===plan.total){
+      const groups=[...new Set(accounts.map(a=>a.group||''))],demands=input.demands;
+      if(demands&&groups.every(g=>Number.isFinite(demands[g])&&demands[g]>=0)&&Object.keys(demands).every(g=>groups.includes(g))){
+        work=groups.map(g=>({key:'',model:g,rate:demands[g],eligible:accounts.filter(a=>(a.group||'')===g).map(a=>a.id)}));
+      }
+    }
+    return {work:complete?work:null,modelAware,supply,demand:work===null?null:work.reduce((n,d)=>n+d.rate*24,0),complete};
+  }
   // Small bipartite residual network: demand nodes cannot spend the same
   // dollar twice. Augmenting paths let constrained models displace flexible ones.
   function allocate(accounts, demands, amounts) {
@@ -81,6 +100,6 @@ const quotaMembers = (() => {
       return {...m,used:known?used:null,lent:known&&m.account?lent:null,borrowed:known&&m.account?borrowed:null,net:known&&m.account?lent-borrowed:null};
     });
   }
-  return {workload,allocate,ratio,inventory,project,ledger};
+  return {workload,health,allocate,ratio,inventory,project,ledger};
 })();
 if(typeof module!=='undefined')module.exports=quotaMembers;

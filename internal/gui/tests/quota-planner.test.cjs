@@ -19,7 +19,19 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   const theme=lang==='zh'?'dark':'light';
   const page=await browser.newPage({viewport:{width:1440,height:950},reducedMotion:'reduce'});page.setDefaultTimeout(8000);
   page.setDefaultNavigationTimeout(60000);
-  const errors=[],mutations=[]; const bindings={};let memberComplete=true;let mode='ok', delayed=null, qReads=0, paceMode='normal';
+  // Use a reader's wheel gesture: the app intentionally rejects an automation's
+  // unannounced scrollIntoView when preserving the last user scroll position.
+  async function reach(selector){
+   const target=page.locator(selector);
+   await page.mouse.move(1200,500);
+   for(let i=0;i<12;i++){
+    const r=await target.boundingBox();if(r&&r.y>=80&&r.y+r.height<=850)return;
+    await page.mouse.wheel(0,r&&r.y<80?-500:500);
+    await page.waitForTimeout(80);
+   }
+   assert.fail('control could not be reached by scrolling: '+selector);
+  }
+  const errors=[],mutations=[]; const bindings={};let memberComplete=true,unattributed=false,planKnown=true,planUnavailable=false,bindingError=false;let mode='ok', delayed=null, qReads=0, paceMode='normal';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const req=route.request(), u=new URL(req.url()), json=x=>route.fulfill({json:x});
@@ -33,11 +45,12 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    if(u.pathname==='/api/usage/quota-plan'&&u.searchParams.get('history')==='1'){
     const from=+u.searchParams.get('from'),to=+u.searchParams.get('to');return json({earliest:now-30*86400000,bins:[{from,to:Math.min(now,to),actual:12,predicted:10,known:to<=now}],observations:[],forecasts:[]});
    }
-   if(u.pathname==='/api/usage/quota-plan')return json({input:planInput,result:solveFixture(planInput),demandKnown:true,total:4,coverage:4});
+   if(u.pathname==='/api/usage/quota-plan'&&planUnavailable)return route.fulfill({status:503,body:'unavailable'});
+   if(u.pathname==='/api/usage/quota-plan')return json({input:planInput,result:solveFixture(planInput),demandKnown:planKnown,total:4,coverage:planKnown?4:0});
    if(u.pathname==='/api/usage/quota-plan/demo')return json(solveFixture(req.postDataJSON()));
    if(u.pathname==='/api/usage/quotas/history')return json(history);
-   if(u.pathname==='/api/usage/quota-members'&&req.method()==='POST'){const b=req.postDataJSON();bindings[b.key]=b.account;return json({ok:true});}
-   if(u.pathname==='/api/usage/quota-members')return json({at:now,members:accounts.map((q,i)=>({id:'k'+i,name:i===0?'<img src=x onerror=alert(1)>':'Member '+i,account:bindings['k'+i]===''?'':planInput.accounts[i].id,ref:bindings['k'+i]??'codex/'+i,eligible:{'codex/model':planInput.accounts.map(a=>a.id)}})),accounts:accounts.map((q,i)=>({id:planInput.accounts[i].id,ref:'codex/'+i,user:q.user,provider:'codex'})),usage:{from:now-30*86400000,to:now,complete:memberComplete,rows:accounts.flatMap((q,i)=>Array.from({length:26},(_,h)=>({at:Math.floor(now/3600000)*3600000-(h+1)*3600000,key:'k'+i,account:planInput.accounts[i].id,model:'codex/model',cost:1,tokens:10000,unpriced:0})))}});
+   if(u.pathname==='/api/usage/quota-members'&&req.method()==='POST'){if(bindingError)return route.fulfill({status:409,body:'duplicate'});const b=req.postDataJSON();bindings[b.key]=b.account;return json({ok:true});}
+   if(u.pathname==='/api/usage/quota-members')return json({at:now,members:accounts.map((q,i)=>({id:'k'+i,name:i===0?'<img src=x onerror=alert(1)>':'Member '+i,account:bindings['k'+i]===''?'':planInput.accounts[i].id,ref:bindings['k'+i]??'codex/'+i,eligible:{'codex/model':planInput.accounts.map(a=>a.id)}})),accounts:accounts.map((q,i)=>({id:planInput.accounts[i].id,ref:'codex/'+i,user:q.user,provider:'codex'})),usage:{from:now-30*86400000,to:now,complete:memberComplete,rows:accounts.flatMap((q,i)=>Array.from({length:26},(_,h)=>({at:Math.floor(now/3600000)*3600000-(h+1)*3600000,key:unattributed?'':'k'+i,account:planInput.accounts[i].id,model:'codex/model',cost:1,tokens:10000,unpriced:0})))}});
    if(u.pathname==='/api/usage')return json({...totals,series:[{...totals,label:'Today',time:at(0)}],callerKeys:[{id:'k',name:'<img src=x onerror=alert(1)>',...totals}]});
    if(u.pathname==='/api/gateway/trace'){await new Promise(r=>setTimeout(r,100));return json({mine:false,seq:0,routes:[],totals:{requests:0,rerouted:0,errors:0}});}
    if(u.pathname==='/api/gateway/history')return json({days:[],routes:[]});
@@ -75,7 +88,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   assert.equal(await page.locator('#qpDateThumb').count(),1);
   if(process.env.ARTIFACT_DIR&&lang==='zh'){
    await fs.mkdir(process.env.ARTIFACT_DIR,{recursive:true});
-   for(const tab of ['plan','trend','keys','health']){
+   for(const tab of ['plan','health']){
     await page.locator(`#qpTabs [data-tab=${tab}]`).click();
     await page.locator('.headline h1').waitFor();
     await page.screenshot({path:path.join(process.env.ARTIFACT_DIR,`${tab}-${engine}-desktop.png`),fullPage:true});
@@ -83,6 +96,7 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
    await page.locator('#qpTabs [data-tab=plan]').click();
   }
   assert.equal(await page.locator('[data-tab=mechanism]').count(),0);
+  assert.equal(await page.locator('#qpTabs [data-tab]').count(),2);
   assert.equal(await page.locator('[data-qp-composition=accounts]').getAttribute('aria-pressed'),'true');
   assert(await page.locator('.qp-account-area').count()>0);
   assert(await page.locator('[data-qp-weekend]').count()>0);
@@ -103,32 +117,42 @@ const totals={calls:100,errors:5,input:100,output:80,cache_read:300,cache_write:
   await page.locator('#qpBody .qp-account .pii').first().waitFor();
   await page.evaluate(()=>hideAccounts.set(false));
   assert((await page.locator('.qp-account').first().textContent()).includes('a@example.test'),'unmask restores account identity');
-  await page.locator('#qpTabs [data-tab=trend]').click();
-  await page.locator('[data-review-account="1"]').click();
-  assert.equal(await page.locator('[data-review-account="1"]').getAttribute('aria-pressed'),'true');
-  await page.locator('#qpTabs [data-tab=keys]').click();
-  await page.locator('[data-member="0"]').click();
-  assert.equal(await page.locator('#qpBody img').count(),0);
-  assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),2);
-  if(lang==='en'){
-   await page.locator('[data-bind-member]').click();await page.getByRole('menuitemradio').first().click();
-   await page.getByText('Bind the contributed account to compare standalone and shared usage.',{exact:true}).waitFor();
-   assert.equal(bindings.k0,'');
-   await page.locator('[data-bind-member]').click();await page.getByRole('menuitemradio').nth(1).click();
-   await page.waitForFunction(()=>document.querySelectorAll('#qpBody .analysis-plot svg').length===2);
-   assert.equal(bindings.k0,'codex/0');
-   memberComplete=false;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent.includes('—'));
-   memberComplete=true;await page.locator('#qpReload').click();await page.waitForFunction(()=>document.querySelector('#qpBody .v-metrics b')?.textContent&&!document.querySelector('#qpBody .v-metrics b').textContent.includes('—'));
-  }
-
-  await page.locator('[data-key-model="codex/model"]').click();
+  assert.deepEqual(await page.locator('#qpTabs [data-tab]').evaluateAll(es=>es.map(e=>e.dataset.tab)),['plan','health']);
   await page.locator('#qpTabs [data-tab=health]').click();
+  assert.equal(await page.locator('#qpBody img').count(),0);
+  assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6);
+  assert(await page.locator('[data-qp-number=health-ratio]').count());
+  if(lang==='en'){
+   await reach('[data-bind-member=k0]');await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').first().click();
+   await page.waitForFunction(()=>document.querySelector('[data-bind-member=k0]')?.textContent.includes('Unbound'));
+   assert.equal(bindings.k0,'');
+   await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').nth(1).click();
+   await page.waitForFunction(()=>document.querySelector('[data-bind-member=k0]')?.textContent.includes('a@example.test'));
+   assert.equal(bindings.k0,'codex/0');
+   bindingError=true;await page.locator('[data-bind-member=k0]').click();await page.getByRole('menuitemradio').nth(2).click();
+   await page.getByText('Binding could not be saved. The account may already belong to another member.',{exact:true}).waitFor();bindingError=false;
+   unattributed=true;await reach('#qpReload');await page.locator('#qpReload').click();
+   await page.getByText('Aggregate capacity ratio',{exact:true}).waitFor();
+   assert.equal(await page.locator('[data-qp-number=health-demand]').getAttribute('data-qp-value'),'72');
+   assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),1);
+   assert.equal(await page.locator('.qp-admission').count(),0,'aggregate estimate cannot authorize member admission');
+   memberComplete=false;planKnown=false;await page.locator('#qpReload').click();
+   await page.waitForFunction(()=>document.querySelector('[data-qp-number=health-demand]')?.dataset.qpValue==='');
+   assert(Math.abs(Number(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'))-100)<1e-6,'known supply survives unavailable demand');
+   assert.equal(await page.locator('#qpBody .analysis-plot svg').count(),0,'missing data is not an empty chart');
+   planUnavailable=true;await page.locator('#qpReload').click();
+   await page.locator('#qpStatus').waitFor();
+   assert.equal(await page.locator('[data-qp-number=health-supply]').getAttribute('data-qp-value'),'');
+   planUnavailable=false;unattributed=false;memberComplete=true;planKnown=true;await page.locator('#qpReload').click();
+   await page.locator('.qp-admission').waitFor();
+  }
+  if(lang==='en')await reach('[data-admission=full]');
   for(const [key,value]of Object.entries({full:'200',daily:'20',resetHours:'40',left:'80',cards:'1',expiryHours:'50'}))await page.locator(`[data-admission=${key}]`).fill(value);
   await page.locator('[data-admission=expiryHours]').press('Tab');
   assert(!/NaN|Infinity/.test(await page.locator('#qpBody').innerHTML()));
   for(const width of [1024,390]){
    await page.setViewportSize({width,height:900});
-   for(const tab of ['plan','trend','keys','health']) {await page.locator(`#qpTabs [data-tab=${tab}]`).click();assert(await page.locator('#view-quota-planner').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`${lang} ${tab} overflow at ${width}`);}
+   for(const tab of ['plan','health']) {await page.locator(`#qpTabs [data-tab=${tab}]`).click();assert(await page.locator('#view-quota-planner').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`${lang} ${tab} overflow at ${width}`);}
   }
   if(lang==='en'){
    await page.setViewportSize({width:1440,height:950});

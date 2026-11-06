@@ -2,6 +2,14 @@
 // kernel adds them to i18n.js's (magpie.strings).
 magpie.strings({
   zh: {
+    "Recurring demand exceeds natural supply.": "持续消耗超过自然补充能力。",
+    "Aggregate capacity ratio": "总供需比",
+    "Provider-level estimate": "按渠道汇总估算",
+    "Forecast unavailable: waiting for complete usage and account calibration.": "暂无法预测：等待完整用量记录与账号容量校准。",
+    "Includes unattributed usage. This provider-level scenario does not guarantee capacity for each member or model.": "已计入未关联成员的用量；此曲线按渠道汇总估算，不保证每个成员或模型都能获得对应额度。",
+    "Member and model history is required for admission estimates. Pool totals remain available.": "成员准入评估需要完整的成员与模型记录，号池总供需仍可查看。",
+    "No consumption recorded in the observed day.": "观测日内没有消耗记录。",
+
     "{count} days": "{count} 天",
     "{count} hours": "{count} 小时",
     "Weekly supply minus new demand": "每周持续供需差",
@@ -524,6 +532,14 @@ magpie.strings({
     "Target pace": "目标",
   },
   "zh-TW": {
+    "Recurring demand exceeds natural supply.": "持續消耗超過自然補充能力。",
+    "Aggregate capacity ratio": "總供需比",
+    "Provider-level estimate": "依供應商彙總估算",
+    "Forecast unavailable: waiting for complete usage and account calibration.": "暫時無法預測：等待完整用量記錄與帳號容量校準。",
+    "Includes unattributed usage. This provider-level scenario does not guarantee capacity for each member or model.": "已計入未關聯成員的用量；此曲線依供應商彙總估算，不保證每個成員或模型均可取得對應額度。",
+    "Member and model history is required for admission estimates. Pool totals remain available.": "成員准入評估需要完整的成員與模型記錄，仍可查看號池總供需。",
+    "No consumption recorded in the observed day.": "觀測日內沒有消耗記錄。",
+
     "{count} days": "{count} 天",
     "{count} hours": "{count} 小時",
     "Weekly supply minus new demand": "每週持續供需差",
@@ -1046,6 +1062,14 @@ magpie.strings({
     "Target pace": "目標",
   },
   ja: {
+    "Recurring demand exceeds natural supply.": "継続的な需要が自然補充量を超えています。",
+    "Aggregate capacity ratio": "総供給・需要比",
+    "Provider-level estimate": "プロバイダー単位の推定",
+    "Forecast unavailable: waiting for complete usage and account calibration.": "予測できません。完全な使用履歴とアカウント容量の校正を待っています。",
+    "Includes unattributed usage. This provider-level scenario does not guarantee capacity for each member or model.": "メンバー未割当の使用量を含みます。このプロバイダー単位の予測は各メンバーやモデルの容量を保証しません。",
+    "Member and model history is required for admission estimates. Pool totals remain available.": "参加条件の推定には完全なメンバー・モデル履歴が必要です。プール全体の需給は表示できます。",
+    "No consumption recorded in the observed day.": "観測日の使用記録はありません。",
+
     "{count} days": "{count} 日",
     "{count} hours": "{count} 時間",
     "Weekly supply minus new demand": "週の供給と新規需要の差",
@@ -1568,6 +1592,14 @@ magpie.strings({
     "Target pace": "目標",
   },
   de: {
+    "Recurring demand exceeds natural supply.": "Der laufende Bedarf übersteigt die natürliche Nachfüllung.",
+    "Aggregate capacity ratio": "Gesamtverhältnis von Kapazität zu Bedarf",
+    "Provider-level estimate": "Schätzung je Anbieter",
+    "Forecast unavailable: waiting for complete usage and account calibration.": "Prognose nicht verfügbar: Vollständige Nutzung und Kontokalibrierung fehlen.",
+    "Includes unattributed usage. This provider-level scenario does not guarantee capacity for each member or model.": "Nicht zugeordnete Nutzung ist enthalten. Diese Anbieterprognose garantiert keine Kapazität für einzelne Mitglieder oder Modelle.",
+    "Member and model history is required for admission estimates. Pool totals remain available.": "Aufnahmeprognosen benötigen vollständige Mitglieder- und Modellhistorien. Die Pool-Gesamtwerte bleiben verfügbar.",
+    "No consumption recorded in the observed day.": "Am beobachteten Tag wurde keine Nutzung erfasst.",
+
     "{count} days": "{count} Tage",
     "{count} hours": "{count} Stunden",
     "Weekly supply minus new demand": "Wöchentlicher Saldo nach neuem Bedarf",

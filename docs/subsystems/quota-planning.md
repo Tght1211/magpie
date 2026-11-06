@@ -170,8 +170,10 @@ consumption assumptions or routing priorities.
 
 ## Member dashboard (approved battery layout)
 
-The four native tabs are planning, consumption review, Key sharing benefit and
-pool health. The explanation demo is no longer registered. The account stack is
+The two native tabs are quota planning and pool health. Consumption review and
+Key sharing benefit no longer have page entries; retained history and member
+aggregates remain available to planning and health. Member/account ownership
+can be edited in the health ledger. The explanation demo is no longer registered. The account stack is
 the planning default; controls sit above it, with date navigation and Back to now
 in one strip below. Dragging preserves the range input rather than replacing it
 mid-gesture. Weekends use the browser's local calendar. Minute allowance reads and
@@ -237,7 +239,7 @@ consumption review compares only recorded intervals, not a line fitted after use
 UI polish follows Unslop by Damir Sokolovsky (@heydamir), CC BY 4.0, preserving
 Magpie's palette, fonts, shell and menu components. Regression tests cover capacity
 conservation, model bottlenecks, finite cards, sliding resets, binding uniqueness,
-corrupt/stale settings, authentication, privacy and all four tabs in both engines.
+corrupt/stale settings, authentication, privacy and both tabs in both engines.
 
 
 ### Prototype parity correction
@@ -266,3 +268,20 @@ reports projected card use and unmet demand by model, and finds the calibrated
 weekly capacity required for 20% demand headroom using the existing compatibility
 flow. It is an illustration, not an admission operation or guaranteed minimum
 number of cards. No actual dispatch or card executor changes in this UI correction.
+
+### Health completeness and scope — 2026-11-06
+
+Member usage completeness compares the ledger file against the snapshot's parsed
+file offset and file identity, not its compressed index memory footprint. Partial
+trailing records, changed or unavailable files remain incomplete.
+
+Health displays calibrated natural supply independently of demand availability.
+When all member/model workload inputs are known it uses the compatibility network.
+Otherwise, a fresh, complete provider-level plan may supply an explicitly labelled
+aggregate scenario, including all measured use of the calibrated pool regardless
+of member ownership. Provider groups remain separate. This aggregate scenario does
+not claim per-member/model availability and cannot produce admission estimates.
+Unknown aggregate demand or incomplete capacity leaves the forecast unavailable;
+the page explains this instead of rendering empty axes. Known supply still shows.
+The actual sharing ledger retains its attribution rules and does not assign
+unattributed use to members. Binding failures are visible in the page status.
