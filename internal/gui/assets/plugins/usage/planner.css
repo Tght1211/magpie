@@ -143,7 +143,7 @@
 .qp .account-values {grid-column:2;grid-row:1;margin:0}
 .qp .account-meter {grid-column:2;grid-row:2;margin-top:9px}
 .qp .account small {grid-column:1;grid-row:2;font-size:10px}
-.qp .events {display:flex;overflow:auto;gap:8px;margin-top:10px;scroll-snap-type:x mandatory}
+.qp .events {display:flex;gap:8px;margin-top:10px;scroll-snap-type:x mandatory}
 .qp .event {min-width:220px;scroll-snap-align:start}
 .qp .demo-row {align-items:flex-start;flex-direction:column;gap:8px}
 .qp .demo-controls {gap:7px}

@@ -166,6 +166,8 @@ var cliForRoute = map[string]string{
 var notYet = map[string]string{
 	"GET /api/usage/quota-pool":       U, // account calibration and pool history, no CLI formatter yet
 	"GET /api/usage/quota-plan":       U, // custom inventory forecast, no CLI formatter yet
+	"GET /api/usage/quota-members":    U, // member/account usage comparison, no CLI formatter yet
+	"POST /api/usage/quota-members":   U, // contributed-account binding is edited in the dashboard only
 	"POST /api/usage/quota-plan/demo": W, // pure interactive explanation; never applies routing or resets
 
 	"POST /api/agent-fast":                       A,  // agent_models.go

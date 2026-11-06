@@ -178,6 +178,9 @@ mid-gesture. Weekends use the browser's local calendar. Minute allowance reads a
 15-second measured pace reads use the existing lifecycle; no simulated refresh
 values are shipped. Automatic refresh can be paused, and successful refresh time
 is visible. Number interpolation occurs only when actual readings change.
+Manual refresh sends `asked=1&all=1` to the provider quota endpoint, so the
+upstream saved-Claude-account refresh includes every account in the pool.
+Automatic reads retain their existing deferred-refresh behavior.
 
 `GET /api/usage/quota-members` provides 30 days of local hourly Key/account/model
 aggregates, current key metadata without secrets, stable account references and
@@ -185,6 +188,10 @@ explicit bindings. `POST` changes one binding only: one member Key owns exactly
 one contributed account, and a contributed account cannot have two owners. The
 annotation lives in `Settings.QuotaMembers`; it grants no permissions and never
 changes `access.Key.Accounts`. Ordinary or stale settings saves preserve it.
+The generic settings API also carries the saved bindings into its response,
+ignoring omitted, null or supplied ownership maps; the CLI cannot edit them
+through generic settings keys. Ownership changes use the dedicated route's
+one-member/one-account validation.
 Unreadable settings are not overwritten. Issued child-key use is attributed to its
 issuer. Unknown caller/account identifiers remain unattributed. Failed reads,
 unpriced demand and short history do not become zero. No request bodies leave the

@@ -115,7 +115,7 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         // the foot: the switch and its words, off, on the screen whole beside
         // Hide all · Show all
         const only = pop.locator(".am-only");
-        assert.equal(await only.innerText(), w.only);
+        assert.equal((await only.innerText()).trim(), w.only);
         assert.equal(await sw.getAttribute("aria-checked"), "false");
         assert.equal(await sw.getAttribute("role"), "switch");
         const pb = await pop.boundingBox(), ob = await only.boundingBox(), rb = await pop.locator(".am-foot .am-hide").boundingBox();

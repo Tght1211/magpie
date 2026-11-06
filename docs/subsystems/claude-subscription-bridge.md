@@ -303,6 +303,25 @@ path or isn't macOS, Linux or Windows. Nothing a request asks is refused
 any more (`claudePrint` keeps an image known by its URL, which
 `serveClaudeSubscription` has downloaded before any run, below).
 
+The one exception to "nothing runs as `-p`" with it On is a turn Anthropic
+refuses in the interactive mode as a third-party app's: a 400 "Third-party
+apps now draw from your extra usage" (#4503). Anthropic judges the agent's
+own system prompt, as a whole, there and serves the same prompt to `-p`
+(isjiajia01's controlled tests; Raven on Discord: Pi in Cindy through
+`group/auto`, every turn refused). When the refusal comes with nothing of
+the reply said or sent (`relay` hands it back as `redoAsPrint`,
+`redoable`), the turn is asked again once as `-p` (`serveSubscriptionAs`,
+`Request.tuiRefused`, `claudePrint` code `third-party`). Anthropic answered
+the refused turn nothing, so the `-p` run is its only answer; a turn that
+would draw from extra usage would have been served, not refused. The
+prompt's fingerprint (`thirdPartyKey`: its first 2KB, the agent's own part
+before Pi's working directory) is kept on the bridge for 12 hours
+(`thirdPartyFor`), and its next turns start as `-p`, their runs going on
+with tool results as a `-p` run does (`wantTUI`). A `-p` run's refusal, a
+turn whose reply had begun, and Off are never asked again
+(`thirdPartyRefused` says why). Settings' own value is not changed.
+`claude_tui_refusal_test.go` holds each case.
+
 A JSON schema is answered through an answer tool of magpie's
 (`claude_tui_schema.go`): interactive Claude Code takes `--json-schema`
 and does nothing with it (2.1.316, a real run: its result's
@@ -850,9 +869,23 @@ before the run is let go and its file removed (`branchAt`, a cut copy as
 in [Tool results another request answers first](#tool-results-another-request-answers-first)),
 and a new interactive run resumes the copy, told only the turn's
 messages. Before, every turn after a suggestion was told whole to a new
-run (bbfatx on X). There is no cut with a client's own cache marks, or for a run with no session or no line;
-then the turn is told whole, as before.
-`TestClaudeInteractiveSideQuestionBranchesBeforeIt` holds it.
+run (bbfatx on X). The interactive mode streams a reply first and tells
+its session lines after, read from the file, so as a suggestion begins
+`lastLine` may be a line before the reply (its tool call) or, in a run's
+first reply, empty. The run also keeps the reply's message id (`lastMsg`
+from `replyBegun`, then `backMsg`, `behindMsg` and the shelf's
+`behindMsg`), and `cutReply` cuts after that reply's last main-thread
+line: by the id alone when no line was heard, waiting up to `cutWait` for
+the reply's lines before it falls back to the line (sleepy_shibe, twice).
+The shelf (`unshelve`, `cutBehind`) takes a session behind a side
+question by either. There is no cut with a client's own cache marks, or
+for a run with no session, or neither a line nor a reply; then the turn
+is told whole, as before.
+`TestClaudeInteractiveSideQuestionBranchesBeforeIt`,
+`TestClaudeInteractiveSideQuestionAfterACallKeepsTheReply`,
+`TestClaudeInteractiveSideQuestionAfterAFirstReplyOfWordsKeepsTheReply`,
+`TestClaudeShelvedSideQuestionAfterAFirstReplyOfWordsKeepsTheReply` and
+`TestClaudeCutReplyWaitsForTheReplysLines` hold it.
 
 A turn after a reply that starts a new run logs why none waited
 (`whyNoRun`, "claude: no run waits for this turn: …"): its run went on
@@ -1286,7 +1319,18 @@ Each cost about a fifth of a Pro plan's five hours. The run that made the
 calls instead keeps where in its session each call of the client's tools
 was written: the uuid on Claude Code's `assistant` line (`noteLines`). As
 it parks on them, it also keeps the conversation those calls answered
-(`historyKey`, set in `park`). A request no run takes, whose last reply's
+(`historyKey`, set in `park`), by the ids of the calls the client was
+shown (`shown`): the interactive mode tells a reply's session lines after
+its stream, read from the file, so the run parks before it has them, and
+`noteLines` keeps that conversation when the line comes. Before 11-05 only
+lines already heard were given it, and a late one took the next park's
+conversation, so an interactive run's branch missed in the usual order:
+a fork's directive, or (as kay20475 on X saw it, by its shape) Claude
+Code's AgentSummary for a sub-agent, carrying the results the sub-agent's
+own next turn had taken, was told the whole conversation in a new Claude
+Code each time, pasted as one text, and read only the tools and system
+prompt from the cache (6% of 169k, twice 35s apart). A
+request no run takes, whose last reply's
 calls a live run of the same owner made, from the same conversation, goes
 on in a branch of that run's session. The branch's run copies the
 session's lines up to the reply's uuid into a session file of its own

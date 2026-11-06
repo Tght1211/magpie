@@ -94,7 +94,7 @@ function quotaPlannerController(main) {
     const seq = ++generation;
     if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=true;
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const results = await Promise.allSettled([api('usage/quotas' + (asked ? '?asked=1' : '')), api('usage/quotas/history?days=all'), api('usage?period=30d&tz=' + encodeURIComponent(zone)), api('usage/quota-pool'), api('usage/quota-plan'), api('usage/quota-members')]);
+    const results = await Promise.allSettled([api('usage/quotas' + (asked ? '?asked=1&all=1' : '')), api('usage/quotas/history?days=all'), api('usage?period=30d&tz=' + encodeURIComponent(zone)), api('usage/quota-pool'), api('usage/quota-plan'), api('usage/quota-members')]);
     if (seq !== generation || !shown()) return;
     pending = false;
     if(main.querySelector('#qpReload'))main.querySelector('#qpReload').disabled=false;

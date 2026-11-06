@@ -142,7 +142,13 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       // the one kept for gpt-6-mini says so, always; the other says All models under ⋯ only
       assert.equal(await pill(page, "Spare@Example.com").textContent(), w.one);
       assert.equal(await pill(page, "Spare@Example.com").getAttribute("title"), w.only);
-      assert.equal(await pill(page, "Spare@Example.com").evaluate((e) => getComputedStyle(e).opacity), "1");
+      // A quota refresh can replace the row between locator resolution
+      // and evaluation. Check the current badge, not a detached element
+      // whose computed opacity is the empty string.
+      await page.waitForFunction(() => {
+        const badge = document.querySelector('.editor .acc[data-account-id="Spare@Example.com"] .amodels');
+        return badge && getComputedStyle(badge).opacity === "1";
+      });
       assert.equal(await pill(page, "me@example.com").textContent(), w.all);
       await page.mouse.move(0, 0);
       await page.waitForTimeout(250);

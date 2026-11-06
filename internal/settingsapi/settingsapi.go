@@ -288,9 +288,10 @@ func Merge(body []byte, cur settings.Settings, web bool) (settings.Settings, err
 	in.RequestArchiveLocal, in.RequestArchiveLocalMB = cur.RequestArchiveLocal, cur.RequestArchiveLocalMB
 	// used or left is the Usage page's toggle as much as Settings', set on its own
 	in.QuotaLeft = cur.QuotaLeft
-	in.QuotaReads = cur.QuotaReads // set on its own (quota-reads)
-	in.SearchAll = cur.SearchAll   // set on its own (search-all)
-	in.UsageOrder = cur.UsageOrder // the Usage page's, dragged there
+	in.QuotaReads = cur.QuotaReads     // set on its own (quota-reads)
+	in.QuotaMembers = cur.QuotaMembers // ownership changes only through quota-members
+	in.SearchAll = cur.SearchAll       // set on its own (search-all)
+	in.UsageOrder = cur.UsageOrder     // the Usage page's, dragged there
 	// and what the tray panel's Allowances tab leaves out, set there
 	in.PanelUsageHidden = cur.PanelUsageHidden
 	// and the clients the Usage page's Agents list leaves out, set there

@@ -108,6 +108,9 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         assert(!posts.some((p) => p.path === "/api/settings/full-context"), "every agent's Long conversations was not sent");
         await seg(w.all).click();
         await page.waitForFunction(() => document.querySelector(".agent-compact input.compact-num")?.hidden);
+        // Full window already hid the input. Wait for the saved switch
+        // back to the shared size before editing the other settings row.
+        await seg(w.at("400K")).waitFor();
         assert.deepEqual(posts.at(-1).body, { agent: "claude", own: false });
         const every = page.locator("#fullContextSegs input.compact-num");
         await every.fill("500k");

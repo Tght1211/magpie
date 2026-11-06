@@ -94,12 +94,14 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
         return was === y;
       }, null, { polling: 100 });
       await page.evaluate(() => { window.__hold = true; });
-      const r = await row.boundingBox();
 
       // held at the start: a strip of the dialog over the row, pressed on
       // its logo, the row's handle (it rose from below, 10-24)
       await row.locator(".pv-handle").click();
       await page.locator("#modal:not([hidden]) > .dialog").waitFor();
+      // Opening redraws the provider list. Measure the current row, as
+      // originRect does, rather than its position before that redraw.
+      const r = await row.boundingBox();
       const start = await shown(page, 0);
       assert.match(start.clip, /^inset\(/, `${engine} ${width}: the opening clips the dialog: ${start.clip}`);
       const near = (a, b, what) => assert(Math.abs(a - b) <= 3, `${engine} ${width}: ${what}: ${a} vs ${b}`);
@@ -146,9 +148,10 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       });
       assert(seen > .8, `${engine} ${width}: halfway back the dialog shows: ${seen}`);
       const end = await shown(page, 1);
-      near(end.top, r.y, "closed: the strip's top on the row's");
-      near(end.bottom, r.y + r.height, "closed: the strip's bottom on the row's");
-      assert(end.left >= r.x - 1 && end.right <= words + 16, `${engine} ${width}: closed into the icon and name: ${JSON.stringify(end)}`);
+      const closingRow = await row.boundingBox();
+      near(end.top, closingRow.y, "closed: the strip's top on the row's");
+      near(end.bottom, closingRow.y + closingRow.height, "closed: the strip's bottom on the row's");
+      assert(end.left >= closingRow.x - 1 && end.right <= words + 16, `${engine} ${width}: closed into the icon and name: ${JSON.stringify(end)}`);
       await page.evaluate(() => { window.__hold = false; for (const a of [...document.querySelector("#modal").getAnimations({ subtree: true })]) a.play(); });
       await page.locator("#modal").waitFor({ state: "hidden" });
       assert.equal(await page.locator("#modal > .dialog").evaluate((d) => d.style.clipPath), "", "no clip left behind");
@@ -159,17 +162,18 @@ for (const engine of (process.env.BROWSER ? [process.env.BROWSER] : ["chromium",
       const px = r.width * .62;
       await row.click({ position: { x: px, y: r.height / 2 } });
       await page.locator("#modal:not([hidden]) > .dialog").waitFor();
+      const reopenedRow = await row.boundingBox();
       const again = await shown(page, 0);
-      near(again.top, r.y, "again: the strip's top on the row's");
-      near(again.bottom, r.y + r.height, "again: the strip's bottom on the row's");
-      near((again.left + again.right) / 2, r.x + px, "again: the strip centred on the press");
+      near(again.top, reopenedRow.y, "again: the strip's top on the row's");
+      near(again.bottom, reopenedRow.y + reopenedRow.height, "again: the strip's bottom on the row's");
+      near((again.left + again.right) / 2, reopenedRow.x + px, "again: the strip centred on the press");
       near(again.right - again.left, start.right - start.left, "again: as wide as the icon and name were");
-      assert(again.left >= r.x - 1 && again.right <= r.x + r.width + 1, `${engine} ${width}: again inside the row: ${JSON.stringify(again)}`);
+      assert(again.left >= reopenedRow.x - 1 && again.right <= reopenedRow.x + reopenedRow.width + 1, `${engine} ${width}: again inside the row: ${JSON.stringify(again)}`);
       await page.evaluate(() => { for (const a of document.querySelector("#modal").getAnimations({ subtree: true })) a.finish(); });
       await page.keyboard.press("Escape");
       await page.locator("#modal.out").waitFor({ state: "attached" });
       const back = await shown(page, 1);
-      near((back.left + back.right) / 2, r.x + px, "closed again: back where it was pressed");
+      near((back.left + back.right) / 2, reopenedRow.x + px, "closed again: back where it was pressed");
       assert.deepEqual(errors, []);
     });
   }

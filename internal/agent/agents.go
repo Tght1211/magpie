@@ -59,8 +59,18 @@ func init() {
 	// reopened on Windows, where its stdout was held open
 	provider.CodexAppOpen = codexAppOpen
 	provider.CodexAppReopen = codexAppReopen
+	provider.CodexAppCrashed = codexAppCrashed
+	provider.CodexAppRelaunch = codexAppRelaunch
 	// and what the Codex app holds is read while Codex takes magpie's
 	// models beside its sign-in, Codex switched off in magpie or not
+	// Claude Code's own sign-in is left where the user put it while its
+	// requests go through the gateway, which moves them to an account with
+	// room by itself (oreoft on Discord)
+	provider.ClaudeThroughMagpie = func() bool {
+		home, _ := homes()
+		at := here(home)
+		return claudeRouted(at, filepath.Join(at.claudeDir(), "settings.json"))
+	}
 	provider.CodexHoldMatters = func() bool {
 		home, _ := homes()
 		a := codex(home)
@@ -812,6 +822,23 @@ func piModelJSON(m catalog.Model, gw string, native bool) map[string]any {
 	}
 	if c := piPromptCache(e["api"], m.ID); c != nil {
 		e["promptCache"] = c
+	} else if native && e["api"] == nil {
+		// a routing group has no api of its own (a Messages-only group stays
+		// on Chat, allResponses), and went out with no promptCache, which
+		// stops Pi's cacheWarming with "cache lifetime unavailable" (#5037)
+		// — while whatever Claude member it picks has the gateway's own
+		// translation marking the request ephemeral for five minutes
+		// (addedMark). That short lifetime the group declares; long stays
+		// out, the gateway marks an hour only where a session's turns are
+		// often far apart, so it isn't always true.
+		if _, ms, ok := provider.GroupFinder()(m.ID); ok {
+			for _, g := range ms {
+				if g.Provider.Native(g.Model) == provider.Anthropic {
+					e["promptCache"] = map[string]any{"short": 300}
+					break
+				}
+			}
+		}
 	}
 	return e
 }

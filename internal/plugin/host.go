@@ -498,6 +498,9 @@ type host struct {
 	// fake hosts, which have no child
 	output *proc.Output
 	waited func() error
+	// tree is the child with what it starts (Output.StartTree), ended
+	// together; nil in the fake hosts
+	tree *proc.Tree
 }
 
 // wait is the child's end: what Wait said, once it has ended and the
@@ -923,8 +926,21 @@ func (h *host) stop() {
 		case <-tick.C:
 		}
 	}
+	h.kill()
+}
+
+// kill ends the host's child and every process it started: a plugin's
+// headless browser or daemon outlived a host killed alone, with no parent
+// to end it (620 msedge.exe and 57GB of temp profiles in an hour on one
+// Windows machine, #5402). The tree is the host's session on Unix and its
+// job on Windows (proc.StartTree), so nothing outside it is reached.
+func (h *host) kill() {
+	if h.tree != nil {
+		h.tree.Kill()
+		return
+	}
 	if h.cmd.Process != nil {
-		h.cmd.Process.Kill()
+		_ = h.cmd.Process.Kill()
 	}
 }
 
@@ -1075,6 +1091,7 @@ func startOn(ctx context.Context, bun string) (*host, bool, error) {
 	proxy := hostProxy(env()) // what bunCommand gives it
 	cmd := bunCommand(context.Background(), bun, settings.Dir(), "run", js)
 	addr := hostAddr(cmd.Env)
+	log.Printf("plugin: host starts with %s", netLine(cmd.Env))
 	cmd.Env = hostEnv(cmd.Env)
 	in, err := cmd.StdinPipe()
 	if err != nil {
@@ -1093,7 +1110,8 @@ func startOn(ctx context.Context, bun string) (*host, bool, error) {
 		output.Close()
 		return nil, false, errHostsEnded
 	}
-	waited, err := output.Start(cmd)
+	// in a tree of its own: what its plugins start is ended with it
+	tree, waited, err := output.StartTree(cmd)
 	if err != nil {
 		live.Unlock()
 		return nil, false, err
@@ -1115,6 +1133,7 @@ func startOn(ctx context.Context, bun string) (*host, bool, error) {
 		addr:     addr,
 		output:   output,
 		waited:   waited,
+		tree:     tree,
 	}
 	live.hosts[h] = true
 	live.Unlock()
@@ -1264,9 +1283,7 @@ func (h *host) read(out io.Reader) {
 		if errors.Is(err, errLineTooLong) {
 			// a child that never ends a line: stop it rather than allocate
 			h.fail(fmt.Errorf("the plugin host sent a line longer than %d bytes", h.lineLimit()))
-			if h.cmd.Process != nil {
-				_ = h.cmd.Process.Kill()
-			}
+			h.kill()
 			break
 		}
 		if err != nil {
@@ -1914,7 +1931,51 @@ func (h *host) proxyMoved() bool {
 	}
 	h.proxyAt = time.Now()
 	e := env()
-	return hostProxy(e) != h.proxy || h.addr != "" && hostAddr(e) != h.addr
+	if p := hostProxy(e); p != h.proxy {
+		log.Printf("plugin: the proxy moved, from %s to %s; a new host takes over",
+			netLine(strings.Split(h.proxy, "\x00")), netLine(strings.Split(p, "\x00")))
+		return true
+	}
+	if a := hostAddr(e); h.addr != "" && a != h.addr {
+		log.Printf("plugin: the gateway moved, from %s to %s; a new host takes over", h.addr, a)
+		return true
+	}
+	return false
+}
+
+// netLine is a host's network settings in env as a log line says them:
+// its proxy, without the user and password (netproxy.Redact), NO_PROXY,
+// and what tells Bun which roots to trust. A host's TLS or proxy failure
+// ("unable to get issuer certificate" for a chain that verifies outside
+// it, youyo.p_10001) is read beside it.
+func netLine(env []string) string {
+	keys := []string{"HTTPS_PROXY", "HTTP_PROXY", "ALL_PROXY", "NO_PROXY",
+		"NODE_EXTRA_CA_CERTS", "NODE_USE_SYSTEM_CA", "NODE_TLS_REJECT_UNAUTHORIZED", "SSL_CERT_FILE", "SSL_CERT_DIR"}
+	got := map[string]string{}
+	for _, e := range env {
+		k, v, _ := strings.Cut(e, "=")
+		k = strings.ToUpper(k)
+		if slices.Contains(keys, k) {
+			got[k] = v // exec takes the last
+		}
+	}
+	var parts []string
+	for _, k := range keys {
+		v := strings.TrimSpace(got[k])
+		if v == "" {
+			continue
+		}
+		if strings.HasSuffix(k, "_PROXY") && k != "NO_PROXY" {
+			if v = netproxy.Redact(v); v == "" {
+				v = "(malformed)"
+			}
+		}
+		parts = append(parts, k+"="+v)
+	}
+	if !slices.ContainsFunc(parts, func(p string) bool { return strings.Contains(p, "_PROXY=") && !strings.HasPrefix(p, "NO_PROXY=") }) {
+		parts = append([]string{"no proxy"}, parts...)
+	}
+	return strings.Join(parts, " ")
 }
 
 // hostAddr is the gateway's address a host is told, as MAGPIE_ADDR: the
