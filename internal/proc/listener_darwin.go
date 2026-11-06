@@ -18,9 +18,18 @@ func listeningOn(ctx context.Context, port int) ([]int, error) {
 	if _, err := os.Stat(lsof); err != nil {
 		lsof = "lsof"
 	}
-	out, err := CommandContext(ctx, lsof, "-nP", "-a", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN", "-t").Output()
+	return lsofListeningOn(ctx, lsof, port)
+}
+
+func lsofListeningOn(ctx context.Context, lsof string, port int) ([]int, error) {
+	// Only socket PIDs are needed; avoid filesystem stat/readlink calls that
+	// can block on an unrelated mount before the port is inspected.
+	out, err := CommandContext(ctx, lsof, "-b", "-nP", "-a", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN", "-t").Output()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var ee *exec.ExitError
-	if err != nil && !(errors.As(err, &ee) && len(bytes.TrimSpace(out)) == 0) {
+	if err != nil && !(errors.As(err, &ee) && ee.ExitCode() == 1 && len(bytes.TrimSpace(out)) == 0) {
 		return nil, err
 	}
 	// lsof says 1 for none found

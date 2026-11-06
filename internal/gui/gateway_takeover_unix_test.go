@@ -71,6 +71,7 @@ func TestGatewayFixQuitsAReplacedMagpieReal(t *testing.T) {
 			t.Fatal("the older magpie didn't answer")
 		}
 	}
+	fakeGatewayListener(t, addr, cmd.Process.Pid, ended)
 	// the update replaced its file
 	if err := os.Remove(bin); err != nil {
 		t.Fatal(err)

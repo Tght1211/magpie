@@ -83,6 +83,7 @@ func TestGatewayHeldByAContainer(t *testing.T) {
 				t.Fatalf("%s didn't answer", name)
 			}
 		}
+		fakeGatewayListener(t, addr, cmd.Process.Pid, ended)
 		return cmd, ended
 	}
 

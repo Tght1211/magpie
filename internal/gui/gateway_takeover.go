@@ -59,6 +59,10 @@ var (
 	startWait = 5 * time.Second
 )
 
+// Port discovery is supplied by the OS; lifecycle fixtures isolate their own
+// child listeners instead of scanning unrelated host processes.
+var gatewayListeners = proc.ListeningOn
+
 // takeOverGateway quits the magpie serving the gateway, when there is one,
 // and serves it here.
 func takeOverGateway() gatewayFixJSON {
@@ -113,7 +117,7 @@ func startHere() gatewayFixJSON {
 	port, _ := strconv.Atoi(out.Port)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if pids, err := proc.ListeningOn(ctx, port); err == nil {
+	if pids, err := gatewayListeners(ctx, port); err == nil {
 		for _, pid := range pids {
 			if pid == os.Getpid() {
 				continue
@@ -141,7 +145,7 @@ func quitMagpieOnPort(version string) gatewayFixJSON {
 	out := gatewayFixJSON{Port: port, Version: version}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	pids, err := proc.ListeningOn(ctx, n)
+	pids, err := gatewayListeners(ctx, n)
 	if err != nil {
 		out.Reason, out.Error = "error", err.Error()
 		return out
@@ -201,7 +205,7 @@ func quitMagpieOnPort(version string) gatewayFixJSON {
 // letGo waits until none of pids listens on port.
 func letGo(ctx context.Context, port int, pids []int, wait time.Duration) bool {
 	for deadline := time.Now().Add(wait); ; time.Sleep(100 * time.Millisecond) {
-		now, err := proc.ListeningOn(ctx, port)
+		now, err := gatewayListeners(ctx, port)
 		if err == nil && !slices.ContainsFunc(now, func(p int) bool { return slices.Contains(pids, p) }) {
 			return true
 		}

@@ -62,7 +62,7 @@ func skewHome(t *testing.T, mine string) string {
 // startFakeMagpie runs the test binary, named magpie, as another magpie
 // of version v holding the gateway's port, started as serves says; ended
 // is closed once it has ended.
-func startFakeMagpie(t *testing.T, addr, v, serves string) (ended chan struct{}) {
+func startFakeMagpie(t *testing.T, addr, v, serves string, delay ...time.Duration) (ended chan struct{}) {
 	t.Helper()
 	self, err := os.Executable()
 	if err != nil {
@@ -95,6 +95,7 @@ func startFakeMagpie(t *testing.T, addr, v, serves string) (ended chan struct{})
 			t.Fatalf("the fake magpie %s didn't answer", v)
 		}
 	}
+	fakeGatewayListener(t, addr, cmd.Process.Pid, ended, delay...)
 	return ended
 }
 
@@ -105,8 +106,16 @@ func startFakeMagpie(t *testing.T, addr, v, serves string) (ended chan struct{})
 // flight: an agent's stream through it runs to its end, and then this one
 // serves the gateway.
 func TestAppReplacesItsOlderGatewayOnceIdle(t *testing.T) {
+	testAppReplacesItsOlderGateway(t, 0)
+}
+
+func TestAppReplacementWaitsForPortDiscovery(t *testing.T) {
+	testAppReplacesItsOlderGateway(t, 16*time.Second)
+}
+
+func testAppReplacesItsOlderGateway(t *testing.T, delay time.Duration) {
 	addr := skewHome(t, "0.1.2500")
-	ended := startFakeMagpie(t, addr, "0.1.2400", "app")
+	ended := startFakeMagpie(t, addr, "0.1.2400", "app", delay)
 
 	// an agent's reply streaming through the older one
 	lines := make(chan int, 1)
@@ -139,8 +148,9 @@ func TestAppReplacesItsOlderGatewayOnceIdle(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go watchGateway(ctx, 100*time.Millisecond)
+	done := make(chan struct{})
+	defer func() { cancel(); <-done }()
+	go func() { defer close(done); watchGateway(ctx, 100*time.Millisecond) }()
 
 	// while it streams, it is left serving
 	select {
@@ -155,9 +165,11 @@ func TestAppReplacesItsOlderGatewayOnceIdle(t *testing.T) {
 	}
 
 	// then it is quit, and this one serves the gateway
+	// Port discovery alone may take its 30-second deadline. Do not kill the
+	// fake during cleanup while that lookup or the quit/kill waits still run.
 	select {
 	case <-ended:
-	case <-time.After(15 * time.Second):
+	case <-time.After(45 * time.Second):
 		t.Fatal("the older copy of the app still serves the gateway")
 	}
 	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {

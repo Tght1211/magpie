@@ -41,6 +41,14 @@ three.
 
 ## Constraints and failure behavior
 
+### Port ownership discovery
+
+On macOS, `proc.ListeningOn` queries socket PIDs with `lsof -b` so unrelated
+filesystem stat/readlink calls cannot block port discovery. An empty exit status
+1 means no listener; cancellation, signals and other query errors remain unknown
+and cannot authorize a takeover. Program identity is still checked independently
+before any process is stopped. See `listener_darwin.go` and its failure fixtures.
+
 ### Allowance card refreshes
 
 A card refresh applies only the requested account from the API's full

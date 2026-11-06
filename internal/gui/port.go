@@ -42,7 +42,7 @@ func magpieOnPort(port string) bool {
 	n, _ := strconv.Atoi(port)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	pids, err := proc.ListeningOn(ctx, n)
+	pids, err := gatewayListeners(ctx, n)
 	if err != nil {
 		return true
 	}
