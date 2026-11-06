@@ -43,9 +43,37 @@ Evidence is retained locally under `/tmp/magpie-health-fix/`.
   automatic refresh. No production bindings or provider operations were changed.
 - Native macOS, Linux amd64 nogui and Windows amd64 vet/build checks passed.
 
-The full repository Go run is tracked separately in `go-suite.log`. The earlier
+The full repository Go run passed all 108 package commands (20 had no test
+files; 84 test/subtest skip lines remain for optional/platform-specific cases).
+It used isolated HOME, pinned caches, serial builds and the pinned Bun runtime;
+evidence is in `go-suite.log`. The earlier
 full GUI run stopped at 664 of its 1169 remaining files with 52 failing file runs;
 this is not a full GUI pass, and this focused change does not resolve those other
 pages' failures. Passing reruns are not used to erase that record.
 
-Deployment and final full-Go outcome are recorded after verification completes.
+## Production switch
+
+Deployed `0.1.2995-quota-dashboard.4` from `ca9e3165` on 2026-11-06.
+Linux amd64 executable SHA-256:
+`7386960686c705fff149f451155c488208de65e301d3fb85e9a929e10f4fd462`.
+
+The service-user preflight ran in an empty isolated HOME, verified authenticated
+APIs and embedded assets, and confirmed a synthetic complete ledger is recognized.
+Production switching verified all 54 prior quota identities, unchanged settings,
+keys/provider configuration and the full pre-switch ledger prefix. The service
+and planning APIs are healthy, and the production member API now reports complete
+usage. The backup/switch/check sequence took 15.39 seconds, not measured request
+downtime. Rollback restores the old executable while retaining current data.
+
+Backup: `/var/backups/magpie-custom/20261106T051515Z-quota-dashboard.4`.
+
+The daily upstream synchronization prompt now preserves the two requested modules
+and does not restore the removed review/benefit/demo pages. Its schedule and
+candidate-only, no automatic push/deployment policy are unchanged.
+
+Post-switch Chromium and WebKit checks passed both tabs at 1440/390 pixels,
+automatic refresh, finite populated supply/demand/ratio and a real forecast curve.
+The member API returned complete usage and the ledger displayed actual member
+consumption. Existing member/account bindings were unchanged. A subsequent traffic
+snapshot observed six successful completed calls, one in flight and no errors in
+that snapshot. This is an observation window, not an availability guarantee.
