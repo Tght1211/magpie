@@ -69,3 +69,30 @@ Final frontend and artifact checks:
 - All 108 Go packages passed `go test -count=1 -tags nogui` using isolated HOME,
   pinned caches and per-package logs. The run completed without failed or omitted
   packages, including the gateway, GUI, provider, settings, usage and quota solver.
+
+## Production deployment — 2026-11-07 Asia/Shanghai
+
+Deployed `0.1.2995-quota-dashboard.7` from
+`840a87b02548d96125d3ffa178c928fdf91214b1` on the existing service.
+The committed-source build was byte-identical to the candidate that passed
+Linux preflight. Executable SHA-256:
+`1430aee208043ee750631e6b8ee3b393a9dbe5f89172b21c61d864f39da0ab5d`.
+
+Backup: `/var/backups/magpie-custom/20261106T164400Z-quota-dashboard.7`.
+The previous executable, service configuration and consistent data archive are
+retained. Configuration hashes, all 57 pre-switch provider-quota identities
+and the complete retained usage-ledger prefix matched after the switch.
+Gateway and planner APIs were healthy. Backup/switch/check took 19.39 seconds;
+this is not measured request downtime. The rollback path restores the previous
+executable while keeping current data.
+
+Post-deployment Chromium and WebKit checks passed both pages at 1440/390 px,
+including aligned account rows, populated health/ledger data, calibrated curves,
+privacy masking, no overflow/nonfinite values/browser errors and actual automatic
+refresh. A subsequent read-only traffic snapshot observed three successful
+completed requests, one in flight and no completed errors. This is a deployment
+observation, not an availability guarantee.
+
+The source commit was pushed to `origin/codex/quota-pool-forecast`. Direct GitHub
+push timed out; a temporary local SOCKS tunnel over the existing server SSH
+connection completed the push without changing persisted proxy settings.
